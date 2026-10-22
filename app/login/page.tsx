@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Eye,
   EyeOff,
@@ -121,8 +122,16 @@ export default function LoginPage() {
           </Link>
 
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center p-2.5 shadow-lg">
-              <Sprout size={28} className="text-emerald-400" />
+            <div className="relative w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center p-2 shadow-lg overflow-hidden shrink-0">
+              <Image
+                src="/images/logo-tapsel.png"
+                alt="Logo Tapanuli Selatan"
+                width={40}
+                height={40}
+                className="w-9 h-9 object-contain"
+                priority
+                unoptimized
+              />
             </div>
             <div>
               <h2 className="text-xl font-extrabold tracking-wider text-white">

@@ -3,6 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   LayoutDashboard,
   MapPin,
@@ -189,8 +190,16 @@ export default function Sidebar({
         <div className="p-5 flex items-center justify-between border-b border-[#153e30]">
           <Link href="/dashboard" className="flex items-center gap-3 group">
             {/* Logo Badge */}
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white shadow-md shadow-emerald-950/50 ring-1 ring-emerald-400/30 group-hover:scale-105 transition-transform">
-              <Sprout size={22} className="text-white" />
+            <div className="relative w-10 h-10 rounded-xl bg-white/10 p-1 flex items-center justify-center shrink-0 shadow-md shadow-emerald-950/50 ring-1 ring-emerald-400/30 group-hover:scale-105 transition-transform overflow-hidden">
+              <Image
+                src="/images/logo-tapsel.png"
+                alt="Logo Tapanuli Selatan"
+                width={36}
+                height={36}
+                className="w-8 h-8 object-contain"
+                priority
+                unoptimized
+              />
             </div>
 
             <div>

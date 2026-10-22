@@ -117,7 +117,8 @@ export default function DashboardTaniTapselPage() {
     displayKelompokTani: "0",
     growthKelompokTani: "Memuat poktan...",
     displayPendanaan: "Rp 0",
-    growthPendanaan: "Memuat realisasi...",
+    growthPendanaan: `Tahun Anggaran ${new Date().getFullYear()}`,
+    tahunPendanaan: new Date().getFullYear(),
   };
 
   const chartData = data?.chartData || [];
@@ -216,8 +217,16 @@ export default function DashboardTaniTapselPage() {
 
         <div className="relative z-10 p-5 sm:p-7 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-start sm:items-center gap-4">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center p-2.5 shrink-0 shadow-lg ring-1 ring-white/30">
-              <Sprout size={36} className="text-emerald-300 drop-shadow-sm" />
+            <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center p-2 shrink-0 shadow-lg ring-1 ring-white/30 overflow-hidden">
+              <Image
+                src="/images/logo-tapsel.png"
+                alt="Logo Tapanuli Selatan"
+                width={48}
+                height={48}
+                className="w-11 h-11 object-contain"
+                priority
+                unoptimized
+              />
             </div>
 
             <div>
@@ -453,10 +462,18 @@ export default function DashboardTaniTapselPage() {
               </div>
             )}
 
-            {/* Card 5: Pendanaan */}
-            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md transition-all group">
+            {/* Card 5: Pendanaan (Tahun Saat Ini) */}
+            <Link
+              href="/pendanaan"
+              className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-amber-300 transition-all group block"
+            >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-slate-500">Total Pendanaan</span>
+                <div className="space-y-0.5">
+                  <span className="text-xs font-semibold text-slate-500 block">Total Pendanaan</span>
+                  <span className="text-[10px] font-extrabold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-full inline-block">
+                    Tahun {metrics.tahunPendanaan || new Date().getFullYear()}
+                  </span>
+                </div>
                 <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Coins size={20} />
                 </div>
@@ -467,11 +484,14 @@ export default function DashboardTaniTapselPage() {
                 </span>
                 <span className="text-[11px] font-medium text-slate-500">realisasi</span>
               </div>
-              <div className="mt-2.5 flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50/80 px-2 py-0.5 rounded-md w-fit">
-                <TrendingUp size={12} />
-                <span>{metrics.growthPendanaan}</span>
+              <div className="mt-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50/80 px-2 py-0.5 rounded-md w-fit">
+                  <TrendingUp size={12} />
+                  <span>{metrics.growthPendanaan}</span>
+                </div>
+                <ChevronRight size={14} className="text-slate-400 group-hover:text-amber-600 transition" />
               </div>
-            </div>
+            </Link>
           </div>
 
           {/* B. DUA KARTU SESUAI GAMBAR REFERENSI USER */}

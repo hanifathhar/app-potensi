@@ -260,7 +260,11 @@ export async function GET(request: Request) {
     ]);
 
 
-    // 3. Kalkulasi Real Nilai Pendanaan dari Database
+    // 3. Kalkulasi Real Nilai Pendanaan Tahun Saat Ini dari Database
+    const currentYear = new Date().getFullYear();
+    const tahunParam = url.searchParams.get("tahun");
+    const targetTahun = tahunParam ? parseInt(tahunParam) : currentYear;
+
     const allPendanaan = [
       ...(allowPertanian
         ? danaKebunDb.map((d: any) => ({
@@ -268,9 +272,11 @@ export async function GET(request: Request) {
             program: d.namaProgram,
             unit: d.kebun?.nama || "Kebun",
             sumberDana: d.sumberDana,
+            tahunAnggaran: d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : targetTahun),
             pagu: Number(d.danaDiajukan || 0),
             cair: Number(d.danaDicairkan || 0),
             status: d.status,
+            createdAt: d.createdAt,
           }))
         : []),
       ...(allowPerikanan
@@ -279,9 +285,11 @@ export async function GET(request: Request) {
             program: d.namaProgram,
             unit: d.kolam?.nm_kolam || "Kolam",
             sumberDana: d.sumberDana,
+            tahunAnggaran: d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : targetTahun),
             pagu: Number(d.danaDiajukan || 0),
             cair: Number(d.danaDicairkan || 0),
             status: d.status,
+            createdAt: d.createdAt,
           }))
         : []),
       ...(allowPeternakan
@@ -290,15 +298,24 @@ export async function GET(request: Request) {
             program: d.namaProgram,
             unit: d.peternakan?.nm_peternakan || "Peternakan",
             sumberDana: d.sumberDana,
+            tahunAnggaran: d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : targetTahun),
             pagu: Number(d.danaDiajukan || 0),
             cair: Number(d.danaDicairkan || 0),
             status: d.status,
+            createdAt: d.createdAt,
           }))
         : []),
     ];
 
-    const sumPendanaanCair = allPendanaan.reduce((acc, curr) => acc + curr.cair, 0);
-    const sumPendanaanPagu = allPendanaan.reduce((acc, curr) => acc + curr.pagu, 0);
+    // Filter khusus data pendanaan tahun berjalan (tahun saat ini)
+    const pendanaanTahunIni = allPendanaan.filter((p) => {
+      const yr = p.tahunAnggaran || (p.createdAt ? new Date(p.createdAt).getFullYear() : targetTahun);
+      return yr === targetTahun;
+    });
+
+    const sumPendanaanCairTahunIni = pendanaanTahunIni.reduce((acc, curr) => acc + curr.cair, 0);
+    const sumPendanaanPaguTahunIni = pendanaanTahunIni.reduce((acc, curr) => acc + curr.pagu, 0);
+    const totalPendanaanTahunIni = sumPendanaanCairTahunIni > 0 ? sumPendanaanCairTahunIni : sumPendanaanPaguTahunIni;
 
     const formatCurrencyDisplay = (val: number) => {
       if (val >= 1_000_000_000) {
@@ -327,9 +344,15 @@ export async function GET(request: Request) {
       displayKelompokTani: totalKelompokTani.toLocaleString("id-ID"),
       growthKelompokTani: `${totalKelompokTani} Kelompok tani binaan`,
 
-      totalPendanaan: sumPendanaanCair > 0 ? sumPendanaanCair : sumPendanaanPagu,
-      displayPendanaan: formatCurrencyDisplay(sumPendanaanCair > 0 ? sumPendanaanCair : sumPendanaanPagu),
-      growthPendanaan: `Realisasi: ${formatCurrencyDisplay(sumPendanaanCair)}`,
+      tahunPendanaan: targetTahun,
+      totalPendanaan: totalPendanaanTahunIni,
+      displayPendanaan: formatCurrencyDisplay(totalPendanaanTahunIni),
+      growthPendanaan:
+        sumPendanaanCairTahunIni > 0
+          ? `Realisasi ${targetTahun}: ${formatCurrencyDisplay(sumPendanaanCairTahunIni)}`
+          : sumPendanaanPaguTahunIni > 0
+          ? `Pagu ${targetTahun}: ${formatCurrencyDisplay(sumPendanaanPaguTahunIni)}`
+          : `Tahun Anggaran ${targetTahun}`,
     };
 
     // 4. Bar Chart: 100% Mengambil data hitungan real per Kecamatan dari Database
