@@ -72,7 +72,7 @@ export default function LoginPage() {
         if (data.token) {
           try {
             localStorage.setItem("token", data.token);
-          } catch {}
+          } catch { }
         }
 
         setNotif({
@@ -188,11 +188,10 @@ export default function LoginPage() {
           {/* Notifikasi */}
           {notif && (
             <div
-              className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2.5 ${
-                notif.type === "success"
-                  ? "bg-emerald-950 border border-emerald-800 text-emerald-300"
-                  : "bg-red-950 border border-red-800 text-red-300"
-              }`}
+              className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2.5 ${notif.type === "success"
+                ? "bg-emerald-950 border border-emerald-800 text-emerald-300"
+                : "bg-red-950 border border-red-800 text-red-300"
+                }`}
             >
               {notif.type === "success" ? (
                 <CheckCircle2 size={16} />
@@ -270,49 +269,7 @@ export default function LoginPage() {
           </form>
 
           {/* Quick Login Badge Helper */}
-          <div className="pt-4 border-t border-[#12382b]">
-            <p className="text-[11px] font-bold text-slate-400 mb-2.5 flex items-center gap-1.5">
-              <Sparkles size={12} className="text-amber-400" />
-              Pilih Akun Demo Cepat (Password: password123):
-            </p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => setCredential("admin", "password123")}
-                className="p-2 rounded-xl bg-[#0a261c] hover:bg-[#0f382a] border border-emerald-900/40 text-left transition"
-              >
-                <p className="font-bold text-emerald-300 text-[11px]">Admin Kab</p>
-                <p className="text-[10px] text-slate-400">admin</p>
-              </button>
 
-              <button
-                type="button"
-                onClick={() => setCredential("admin_sipirok", "password123")}
-                className="p-2 rounded-xl bg-[#0a261c] hover:bg-[#0f382a] border border-emerald-900/40 text-left transition"
-              >
-                <p className="font-bold text-sky-300 text-[11px]">Kecamatan</p>
-                <p className="text-[10px] text-slate-400">admin_sipirok</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setCredential("petugas", "password123")}
-                className="p-2 rounded-xl bg-[#0a261c] hover:bg-[#0f382a] border border-emerald-900/40 text-left transition"
-              >
-                <p className="font-bold text-amber-300 text-[11px]">Penyuluh</p>
-                <p className="text-[10px] text-slate-400">petugas</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setCredential("poktan_maju", "password123")}
-                className="p-2 rounded-xl bg-[#0a261c] hover:bg-[#0f382a] border border-emerald-900/40 text-left transition"
-              >
-                <p className="font-bold text-purple-300 text-[11px]">Poktan</p>
-                <p className="text-[10px] text-slate-400">poktan_maju</p>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>

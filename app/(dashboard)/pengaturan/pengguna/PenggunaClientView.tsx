@@ -506,7 +506,7 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Username Login</label>
+                  <label className="block font-bold text-slate-700 mb-1">Username</label>
                   <input
                     type="text"
                     required
@@ -533,7 +533,7 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Peran / Hak Akses (RBAC)</label>
+                  <label className="block font-bold text-slate-700 mb-1">Peran / Hak Akses</label>
                   <select
                     value={formData.peran}
                     onChange={(e) => {
@@ -563,8 +563,8 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                     }
                     className="w-full px-3 py-2 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-[#16a34a] font-bold"
                   >
-                    <option value="true">Aktif (Dapat Login)</option>
-                    <option value="false">Nonaktif (Diblokir)</option>
+                    <option value="true">Aktif</option>
+                    <option value="false">Nonaktif</option>
                   </select>
                 </div>
               </div>
@@ -577,9 +577,6 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Kecamatan {formData.peran === "PETUGAS" ? <span className="text-red-500">* (Wajib 1 Kecamatan)</span> : "(Opsional)"}
-                  </label>
                   <select
                     required={formData.peran === "PETUGAS"}
                     value={formData.kd_kecamatan}
@@ -664,8 +661,8 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                                 key={desa.kd_desa}
                                 onClick={() => handleToggleDesa(desa.kd_desa)}
                                 className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition select-none ${isChecked
-                                    ? "bg-emerald-50/80 text-emerald-900 font-semibold"
-                                    : "hover:bg-slate-50 text-slate-700"
+                                  ? "bg-emerald-50/80 text-emerald-900 font-semibold"
+                                  : "hover:bg-slate-50 text-slate-700"
                                   }`}
                               >
                                 <span className="text-xs">{desa.nm_desa}</span>
