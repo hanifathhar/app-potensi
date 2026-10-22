@@ -55,7 +55,8 @@ export async function middleware(request: NextRequest) {
             Buffer.from(token.split('.')[1], 'base64').toString()
         );
 
-        console.log("✅ Token payload:", { user: payload.username, role: payload.role });
+        const role = payload.role || payload.peran;
+        console.log("✅ Token payload:", { user: payload.username, role });
 
         // Cek expiry
         if (payload.exp && payload.exp * 1000 < Date.now()) {
@@ -66,20 +67,28 @@ export async function middleware(request: NextRequest) {
         }
 
         // Rule 1: Admin Dinas Pertanian TIDAK DAPAT mengakses data perikanan
-        if (payload.role === "ADMIN_PERTANIAN" && pathname.startsWith("/perikanan")) {
+        if (role === "ADMIN_PERTANIAN" && pathname.startsWith("/perikanan")) {
             console.log("⛔ Access denied - Admin Dinas Pertanian dilarang mengakses data perikanan");
             return NextResponse.redirect(new URL("/unauthorized", request.url));
         }
 
-        // Rule 2: Admin Dinas Perikanan HANYA BISA akses data perikanan (dilarang pertanian, peternakan, kelompok-tani, pendanaan)
+        // Rule 2: Admin Dinas Perikanan HANYA BISA akses data perikanan dan pendanaan
         if (
-            payload.role === "ADMIN_PERIKANAN" &&
+            role === "ADMIN_PERIKANAN" &&
             (pathname.startsWith("/pertanian") ||
              pathname.startsWith("/peternakan") ||
-             pathname.startsWith("/kelompok-tani") ||
-             pathname.startsWith("/pendanaan"))
+             pathname.startsWith("/kelompok-tani"))
         ) {
-            console.log("⛔ Access denied - Admin Dinas Perikanan hanya dapat mengakses data perikanan");
+            console.log("⛔ Access denied - Admin Dinas Perikanan hanya dapat mengakses data perikanan dan pendanaan");
+            return NextResponse.redirect(new URL("/unauthorized", request.url));
+        }
+
+        // Rule 3: Menu Pendanaan HANYA BISA diakses oleh SUPERADMIN, ADMIN_KABUPATEN, ADMIN_PERTANIAN, ADMIN_PERIKANAN
+        if (
+            pathname.startsWith("/pendanaan") &&
+            !["SUPERADMIN", "ADMIN_KABUPATEN", "ADMIN_PERTANIAN", "ADMIN_PERIKANAN"].includes(role)
+        ) {
+            console.log("⛔ Access denied - Pendanaan hanya untuk Superadmin, Dinas Pertanian, dan Dinas Perikanan:", role);
             return NextResponse.redirect(new URL("/unauthorized", request.url));
         }
 
@@ -90,8 +99,8 @@ export async function middleware(request: NextRequest) {
             pathname.startsWith("/pengaturan") ||
             pathname.startsWith("/master-data");
 
-        if (isMasterDataRoute && payload.role !== "SUPERADMIN" && payload.role !== "ADMIN_KABUPATEN") {
-            console.log("⛔ Access denied - Data Master hanya untuk SUPERADMIN dan ADMIN_KABUPATEN:", payload.role);
+        if (isMasterDataRoute && role !== "SUPERADMIN" && role !== "ADMIN_KABUPATEN") {
+            console.log("⛔ Access denied - Data Master hanya untuk SUPERADMIN dan ADMIN_KABUPATEN:", role);
             return NextResponse.redirect(new URL("/unauthorized", request.url));
         }
 

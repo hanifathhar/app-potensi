@@ -152,9 +152,14 @@ export default function Sidebar({
     return true;
   });
 
+  const canAccessPendanaan =
+    role === "SUPERADMIN" ||
+    role === "ADMIN_KABUPATEN" ||
+    role === "ADMIN_PERTANIAN" ||
+    role === "ADMIN_PERIKANAN";
+
   const bottomNavItems = [
-    // Rule 2: Admin Dinas Perikanan hanya bisa akses data perikanan
-    ...(role !== "ADMIN_PERIKANAN"
+    ...(canAccessPendanaan
       ? [
           {
             title: "Pendanaan",

@@ -3,6 +3,37 @@ import { prisma } from "@/lib/prisma";
 import { JenisSumberDana, StatusPendanaan } from "@prisma/client";
 import { getUserFromRequest, getAuthorityFilter, isAuthorizedForTerritory } from "@/lib/auth";
 
+function checkUserSectorPermission(user: any, jenisUnit?: string): { allowed: boolean; message?: string } {
+  const isSuperAdmin = user?.peran === "SUPERADMIN" || user?.peran === "ADMIN_KABUPATEN";
+  const isPertanianAdmin = user?.peran === "ADMIN_PERTANIAN";
+  const isPerikananAdmin = user?.peran === "ADMIN_PERIKANAN";
+
+  if (!isSuperAdmin && !isPertanianAdmin && !isPerikananAdmin) {
+    return {
+      allowed: false,
+      message: "Akses Ditolak: Menu Pendanaan hanya dapat diakses oleh Superadmin, Admin Dinas Pertanian, dan Admin Dinas Perikanan.",
+    };
+  }
+
+  if (jenisUnit) {
+    if (isPertanianAdmin && jenisUnit === "KOLAM") {
+      return {
+        allowed: false,
+        message: "Akses Ditolak: Admin Dinas Pertanian tidak memiliki izin mengelola data perikanan.",
+      };
+    }
+
+    if (isPerikananAdmin && jenisUnit !== "KOLAM") {
+      return {
+        allowed: false,
+        message: "Akses Ditolak: Admin Dinas Perikanan hanya memiliki izin mengelola data perikanan.",
+      };
+    }
+  }
+
+  return { allowed: true };
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -11,11 +42,24 @@ export async function GET(request: Request) {
     const kd_desa = searchParams.get("kd_desa") || "";
     const sumberDana = searchParams.get("sumberDana") || "";
     const status = searchParams.get("status") || "";
+    const tahun = searchParams.get("tahun") || "";
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
 
     const user = getUserFromRequest(request);
+    const authCheck = checkUserSectorPermission(user);
+    if (!authCheck.allowed) {
+      return NextResponse.json(
+        { success: false, error: authCheck.message },
+        { status: 403 }
+      );
+    }
+
+    const isSuperAdmin = user?.peran === "SUPERADMIN" || user?.peran === "ADMIN_KABUPATEN";
+    const isPertanianAdmin = user?.peran === "ADMIN_PERTANIAN";
+    const isPerikananAdmin = user?.peran === "ADMIN_PERIKANAN";
+
     const authorityFilter = getAuthorityFilter(user, kd_kecamatan, kd_desa);
 
     const unitWhere: any = {};
@@ -23,19 +67,29 @@ export async function GET(request: Request) {
     if (authorityFilter.kd_desa) unitWhere.kd_desa = authorityFilter.kd_desa;
     const hasAuthorityFilter = Object.keys(unitWhere).length > 0;
 
+    const shouldFetchKebun = isSuperAdmin || isPertanianAdmin;
+    const shouldFetchKolam = isSuperAdmin || isPerikananAdmin;
+    const shouldFetchTernak = isSuperAdmin || isPertanianAdmin;
+
     const [danaKebun, danaKolam, danaTernak] = await Promise.all([
-      prisma.pendanaanKebun.findMany({
-        where: hasAuthorityFilter ? { kebun: unitWhere } : undefined,
-        include: { kebun: { include: { desa: true, kecamatan: true } } },
-      }),
-      prisma.pendanaanKolam.findMany({
-        where: hasAuthorityFilter ? { kolam: unitWhere } : undefined,
-        include: { kolam: { include: { desa: true, kecamatan: true } } },
-      }),
-      prisma.pendanaanPeternakan.findMany({
-        where: hasAuthorityFilter ? { peternakan: unitWhere } : undefined,
-        include: { peternakan: { include: { desa: true, kecamatan: true } } },
-      }),
+      shouldFetchKebun
+        ? prisma.pendanaanKebun.findMany({
+            where: hasAuthorityFilter ? { kebun: unitWhere } : undefined,
+            include: { kebun: { include: { desa: true, kecamatan: true } } },
+          })
+        : Promise.resolve([]),
+      shouldFetchKolam
+        ? prisma.pendanaanKolam.findMany({
+            where: hasAuthorityFilter ? { kolam: unitWhere } : undefined,
+            include: { kolam: { include: { desa: true, kecamatan: true } } },
+          })
+        : Promise.resolve([]),
+      shouldFetchTernak
+        ? prisma.pendanaanPeternakan.findMany({
+            where: hasAuthorityFilter ? { peternakan: unitWhere } : undefined,
+            include: { peternakan: { include: { desa: true, kecamatan: true } } },
+          })
+        : Promise.resolve([]),
     ]);
 
     let combined = [
@@ -70,6 +124,9 @@ export async function GET(request: Request) {
     }
     if (status && status !== "semua") {
       combined = combined.filter((c) => c.status === status);
+    }
+    if (tahun && tahun !== "semua") {
+      combined = combined.filter((c) => c.tahunAnggaran?.toString() === tahun);
     }
     if (search) {
       const q = search.toLowerCase();
@@ -116,6 +173,11 @@ export async function POST(request: Request) {
       keterangan,
     } = body;
 
+    const sectorCheck = checkUserSectorPermission(user, jenisUnit);
+    if (!sectorCheck.allowed) {
+      return NextResponse.json({ success: false, error: sectorCheck.message }, { status: 403 });
+    }
+
     if (!namaProgram || !sumberDana || !danaDiajukan || !kd_unit) {
       return NextResponse.json(
         { success: false, error: "Program, Sumber Dana, Pagu Diajukan, dan Unit Penerima wajib diisi" },
@@ -154,7 +216,7 @@ export async function POST(request: Request) {
       namaProgram,
       sumberDana: sumberDana as JenisSumberDana,
       namaSumberDana,
-      tahunAnggaran: tahunAnggaran ? parseInt(tahunAnggaran) : 2025,
+      tahunAnggaran: tahunAnggaran ? parseInt(tahunAnggaran) : new Date().getFullYear(),
       nomorUsulan,
       danaDiajukan: parseFloat(danaDiajukan),
       danaDisetujui: danaDisetujui ? parseFloat(danaDisetujui) : parseFloat(danaDiajukan),
@@ -202,6 +264,11 @@ export async function PUT(request: Request) {
       keterangan,
     } = body;
 
+    const sectorCheck = checkUserSectorPermission(user, jenisUnit);
+    if (!sectorCheck.allowed) {
+      return NextResponse.json({ success: false, error: sectorCheck.message }, { status: 403 });
+    }
+
     if (!id) {
       return NextResponse.json({ success: false, error: "ID Pendanaan wajib diisi" }, { status: 400 });
     }
@@ -234,7 +301,7 @@ export async function PUT(request: Request) {
       namaProgram,
       sumberDana: sumberDana as JenisSumberDana,
       namaSumberDana,
-      tahunAnggaran: tahunAnggaran ? parseInt(tahunAnggaran) : 2025,
+      tahunAnggaran: tahunAnggaran ? parseInt(tahunAnggaran) : new Date().getFullYear(),
       nomorUsulan,
       danaDiajukan: danaDiajukan !== undefined ? parseFloat(danaDiajukan) : undefined,
       danaDisetujui: danaDisetujui !== undefined ? parseFloat(danaDisetujui) : undefined,
@@ -264,6 +331,11 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     const jenisUnit = searchParams.get("jenisUnit") || "KEBUN";
+
+    const sectorCheck = checkUserSectorPermission(user, jenisUnit);
+    if (!sectorCheck.allowed) {
+      return NextResponse.json({ success: false, error: sectorCheck.message }, { status: 403 });
+    }
 
     if (!id) {
       return NextResponse.json({ success: false, error: "ID Pendanaan wajib diisi" }, { status: 400 });

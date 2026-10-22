@@ -35,7 +35,9 @@ export default async function PendanaanPage() {
       jenis: "KEBUN" as const,
       kd_kecamatan: k.kd_kecamatan,
       kd_desa: k.kd_desa,
-      lokasi: `Kec. ${k.kecamatan?.nm_kecamatan || "-"}`,
+      nm_kecamatan: k.kecamatan?.nm_kecamatan || "",
+      nm_desa: k.desa?.nm_desa || "",
+      lokasi: `Kec. ${k.kecamatan?.nm_kecamatan || "-"}, Desa ${k.desa?.nm_desa || "-"}`,
     })),
     ...kolams.map((k) => ({
       id: k.id,
@@ -44,7 +46,9 @@ export default async function PendanaanPage() {
       jenis: "KOLAM" as const,
       kd_kecamatan: k.kd_kecamatan,
       kd_desa: k.kd_desa,
-      lokasi: `Kec. ${k.kecamatan?.nm_kecamatan || "-"}`,
+      nm_kecamatan: k.kecamatan?.nm_kecamatan || "",
+      nm_desa: k.desa?.nm_desa || "",
+      lokasi: `Kec. ${k.kecamatan?.nm_kecamatan || "-"}, Desa ${k.desa?.nm_desa || "-"}`,
     })),
     ...ternaks.map((t) => ({
       id: t.id,
@@ -53,7 +57,9 @@ export default async function PendanaanPage() {
       jenis: "PETERNAKAN" as const,
       kd_kecamatan: t.kd_kecamatan,
       kd_desa: t.kd_desa,
-      lokasi: `Kec. ${t.kecamatan?.nm_kecamatan || "-"}`,
+      nm_kecamatan: t.kecamatan?.nm_kecamatan || "",
+      nm_desa: t.desa?.nm_desa || "",
+      lokasi: `Kec. ${t.kecamatan?.nm_kecamatan || "-"}, Desa ${t.desa?.nm_desa || "-"}`,
     })),
   ];
 
@@ -86,7 +92,7 @@ export default async function PendanaanPage() {
             Pengelolaan Pendanaan & Bantuan Usaha
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Tracking alokasi program APBN, APBD Provinsi, APBD Tapsel, Dana Desa, dan Swadaya
+            Tracking alokasi program KUR, APBN, APBD Provinsi, APBD Tapsel, Dana Desa, dan Swadaya
           </p>
         </div>
         <div className="flex items-center gap-3">
