@@ -59,13 +59,18 @@ interface Props {
 
 export default function PendanaanClientView({ initialUnits }: Props) {
   const {
+    user,
     isKabupaten,
     isKecamatan,
+    isPpl,
     isPplOrDesa,
     authKecamatan,
     authDesa,
+    isLockedDesa,
+    authDesaList,
     authKecamatanName,
     authDesaName,
+    canEditOrDeleteRecord,
   } = useAuthority();
   const [data, setData] = useState<PendanaanItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,10 +93,10 @@ export default function PendanaanClientView({ initialUnits }: Props) {
     if (!isKabupaten && authKecamatan) {
       setSelectedKec(authKecamatan);
     }
-    if (authDesa) {
+    if (isLockedDesa && authDesa) {
       setSelectedDesa(authDesa);
     }
-  }, [isKabupaten, authKecamatan, authDesa]);
+  }, [isKabupaten, authKecamatan, authDesa, isLockedDesa]);
 
   useEffect(() => {
     const loadWilayah = async () => {
@@ -174,6 +179,7 @@ export default function PendanaanClientView({ initialUnits }: Props) {
   // Filtered Desa based on selected Kecamatan for filter toolbar
   const filterDesaOptions = desaList.filter((d) => {
     if (selectedKec !== "semua" && d.kd_kecamatan !== selectedKec) return false;
+    if (isPpl && authDesaList.length > 0) return authDesaList.includes(d.kd_desa);
     if (authDesa && d.kd_desa !== authDesa) return false;
     return true;
   });
@@ -280,20 +286,18 @@ export default function PendanaanClientView({ initialUnits }: Props) {
   };
 
   const canEditOrDelete = (itemKec?: string, itemDesa?: string) => {
-    if (isKabupaten) return true;
-    if (isKecamatan) return itemKec === authKecamatan;
-    if (isPplOrDesa) {
-      if (authKecamatan && itemKec !== authKecamatan) return false;
-      if (authDesa && itemDesa !== authDesa) return false;
-      return true;
-    }
-    return false;
+    return canEditOrDeleteRecord(itemKec, itemDesa);
   };
 
   const availableUnits = initialUnits.filter((u) => {
     if (u.jenis !== formData.jenisUnit) return false;
     if (isKabupaten) return true;
     if (isKecamatan) return u.kd_kecamatan === authKecamatan;
+    if (isPpl) {
+      if (authKecamatan && u.kd_kecamatan !== authKecamatan) return false;
+      if (authDesaList.length > 0 && u.kd_desa) return authDesaList.includes(u.kd_desa);
+      return true;
+    }
     if (isPplOrDesa) {
       if (authKecamatan && u.kd_kecamatan !== authKecamatan) return false;
       if (authDesa && u.kd_desa !== authDesa) return false;
@@ -365,7 +369,7 @@ export default function PendanaanClientView({ initialUnits }: Props) {
 
             {/* Filter Desa (tampil ketika kecamatan dipilih) */}
             {selectedKec !== "semua" && (
-              authDesa ? (
+              isLockedDesa ? (
                 <div className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700" title="Wilayah Desa Otoritas Anda">
                   <Lock size={12} className="text-blue-600" />
                   <span>{desaList.find((d) => d.kd_desa === authDesa)?.nm_desa || authDesaName || authDesa}</span>
@@ -379,7 +383,9 @@ export default function PendanaanClientView({ initialUnits }: Props) {
                   }}
                   className="px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#16a34a] max-w-[200px]"
                 >
-                  <option value="semua">Semua Desa</option>
+                  <option value="semua">
+                    {isPpl ? `Semua Desa Tugas (${filterDesaOptions.length} Desa)` : "Semua Desa"}
+                  </option>
                   {filterDesaOptions.map((d) => (
                     <option key={d.kd_desa} value={d.kd_desa}>
                       {d.nm_desa}

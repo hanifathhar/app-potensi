@@ -17,34 +17,76 @@ export async function GET(request: Request) {
 
     // Filter untuk relasi unit di siklus dan pendanaan
     const unitWhereKebun = authorityFilter.kd_kecamatan
-      ? { kebun: { kd_kecamatan: authorityFilter.kd_kecamatan } }
+      ? {
+          kebun: {
+            kd_kecamatan: authorityFilter.kd_kecamatan,
+            ...(authorityFilter.kd_desa ? { kd_desa: authorityFilter.kd_desa } : {}),
+          },
+        }
+      : authorityFilter.kd_desa
+      ? { kebun: { kd_desa: authorityFilter.kd_desa } }
       : {};
     const unitWhereKolam = authorityFilter.kd_kecamatan
-      ? { kolam: { kd_kecamatan: authorityFilter.kd_kecamatan } }
+      ? {
+          kolam: {
+            kd_kecamatan: authorityFilter.kd_kecamatan,
+            ...(authorityFilter.kd_desa ? { kd_desa: authorityFilter.kd_desa } : {}),
+          },
+        }
+      : authorityFilter.kd_desa
+      ? { kolam: { kd_desa: authorityFilter.kd_desa } }
       : {};
     const unitWhereTernak = authorityFilter.kd_kecamatan
-      ? { peternakan: { kd_kecamatan: authorityFilter.kd_kecamatan } }
+      ? {
+          peternakan: {
+            kd_kecamatan: authorityFilter.kd_kecamatan,
+            ...(authorityFilter.kd_desa ? { kd_desa: authorityFilter.kd_desa } : {}),
+          },
+        }
+      : authorityFilter.kd_desa
+      ? { peternakan: { kd_desa: authorityFilter.kd_desa } }
       : {};
 
     const siklusOrConditions: any[] = [];
     if (allowPertanian) {
       siklusOrConditions.push(
         authorityFilter.kd_kecamatan
-          ? { kebun: { kd_kecamatan: authorityFilter.kd_kecamatan } }
+          ? {
+              kebun: {
+                kd_kecamatan: authorityFilter.kd_kecamatan,
+                ...(authorityFilter.kd_desa ? { kd_desa: authorityFilter.kd_desa } : {}),
+              },
+            }
+          : authorityFilter.kd_desa
+          ? { kebun: { kd_desa: authorityFilter.kd_desa } }
           : { kebun: { isNot: null } }
       );
     }
     if (allowPerikanan) {
       siklusOrConditions.push(
         authorityFilter.kd_kecamatan
-          ? { kolam: { kd_kecamatan: authorityFilter.kd_kecamatan } }
+          ? {
+              kolam: {
+                kd_kecamatan: authorityFilter.kd_kecamatan,
+                ...(authorityFilter.kd_desa ? { kd_desa: authorityFilter.kd_desa } : {}),
+              },
+            }
+          : authorityFilter.kd_desa
+          ? { kolam: { kd_desa: authorityFilter.kd_desa } }
           : { kolam: { isNot: null } }
       );
     }
     if (allowPeternakan) {
       siklusOrConditions.push(
         authorityFilter.kd_kecamatan
-          ? { peternakan: { kd_kecamatan: authorityFilter.kd_kecamatan } }
+          ? {
+              peternakan: {
+                kd_kecamatan: authorityFilter.kd_kecamatan,
+                ...(authorityFilter.kd_desa ? { kd_desa: authorityFilter.kd_desa } : {}),
+              },
+            }
+          : authorityFilter.kd_desa
+          ? { peternakan: { kd_desa: authorityFilter.kd_desa } }
           : { peternakan: { isNot: null } }
       );
     }

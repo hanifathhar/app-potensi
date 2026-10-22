@@ -39,7 +39,28 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json({
+    const desaList = (pengguna as any).kd_desa_list && (pengguna as any).kd_desa_list.length > 0
+      ? (pengguna as any).kd_desa_list
+      : pengguna.kd_desa
+      ? [pengguna.kd_desa]
+      : [];
+
+    const newToken = jwt.sign(
+      {
+        id: pengguna.id,
+        nama: pengguna.nama,
+        username: pengguna.username,
+        role: pengguna.peran,
+        peran: pengguna.peran,
+        kd_kecamatan: pengguna.kd_kecamatan,
+        kd_desa: pengguna.kd_desa,
+        kd_desa_list: desaList,
+      },
+      JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    const response = NextResponse.json({
       user: {
         id: pengguna.id,
         nama: pengguna.nama,
@@ -50,11 +71,24 @@ export async function GET(req: Request) {
         aktif: pengguna.aktif,
         kd_kecamatan: pengguna.kd_kecamatan,
         kd_desa: pengguna.kd_desa,
-        kd_desa_list: (pengguna as any).kd_desa_list || [],
+        kd_desa_list: desaList,
         kecamatan: pengguna.kecamatan ? { kd_kecamatan: pengguna.kecamatan.kd_kecamatan, nm_kecamatan: pengguna.kecamatan.nm_kecamatan } : null,
         desa: pengguna.desa ? { kd_desa: pengguna.desa.kd_desa, nm_desa: pengguna.desa.nm_desa } : null,
       },
+      token: newToken,
     });
+
+    response.cookies.set({
+      name: "token",
+      value: newToken,
+      httpOnly: true,
+      secure: req.headers.get("x-forwarded-proto") === "https" || req.url.startsWith("https://"),
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24,
+    });
+
+    return response;
   } catch (error) {
     console.error("Auth check failed:", error);
     return NextResponse.json({ error: "Invalid token" }, { status: 401 });

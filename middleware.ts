@@ -71,30 +71,28 @@ export async function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL("/unauthorized", request.url));
         }
 
-        // Rule 2: Admin Dinas Perikanan HANYA BISA akses data perikanan (dilarang pertanian & peternakan)
-        if (payload.role === "ADMIN_PERIKANAN" && (pathname.startsWith("/pertanian") || pathname.startsWith("/peternakan"))) {
+        // Rule 2: Admin Dinas Perikanan HANYA BISA akses data perikanan (dilarang pertanian, peternakan, kelompok-tani, pendanaan)
+        if (
+            payload.role === "ADMIN_PERIKANAN" &&
+            (pathname.startsWith("/pertanian") ||
+             pathname.startsWith("/peternakan") ||
+             pathname.startsWith("/kelompok-tani") ||
+             pathname.startsWith("/pendanaan"))
+        ) {
             console.log("⛔ Access denied - Admin Dinas Perikanan hanya dapat mengakses data perikanan");
             return NextResponse.redirect(new URL("/unauthorized", request.url));
         }
 
-        // Cek akses menu pengaturan pengguna (hanya SUPERADMIN & ADMIN_KABUPATEN)
-        if (pathname.startsWith("/pengaturan/pengguna") && payload.role !== "SUPERADMIN" && payload.role !== "ADMIN_KABUPATEN") {
-            return NextResponse.redirect(new URL("/unauthorized", request.url));
-        }
+        // Rule 4: Data Master HANYA BISA diakses oleh SUPERADMIN & ADMIN_KABUPATEN
+        // Rute master data meliputi: /wilayah, /pengaturan (komoditas & pengguna), dan /master-data
+        const isMasterDataRoute =
+            pathname.startsWith("/wilayah") ||
+            pathname.startsWith("/pengaturan") ||
+            pathname.startsWith("/master-data");
 
-        // Cek akses admin untuk route master data
-        const masterDataRoles = ["SUPERADMIN", "ADMIN_KABUPATEN"];
-        if (pathname.startsWith("/master-data/pengguna")) {
-            const allowedPenggunaRoles = ["SUPERADMIN", "ADMIN_KABUPATEN", "ADMIN_KECAMATAN", "ADMIN_DESA"];
-            if (!allowedPenggunaRoles.includes(payload.role)) {
-                console.log("⛔ Access denied - Manajemen Pengguna restricted for role:", payload.role);
-                return NextResponse.redirect(new URL("/unauthorized", request.url));
-            }
-        } else if (adminOnlyRoutes.some((route) => pathname.startsWith(route))) {
-            if (!masterDataRoles.includes(payload.role)) {
-                console.log("⛔ Access denied - Master Data only for Kabupaten/Superadmin:", payload.role);
-                return NextResponse.redirect(new URL("/unauthorized", request.url));
-            }
+        if (isMasterDataRoute && payload.role !== "SUPERADMIN" && payload.role !== "ADMIN_KABUPATEN") {
+            console.log("⛔ Access denied - Data Master hanya untuk SUPERADMIN dan ADMIN_KABUPATEN:", payload.role);
+            return NextResponse.redirect(new URL("/unauthorized", request.url));
         }
 
         // Cek akses rute laporan

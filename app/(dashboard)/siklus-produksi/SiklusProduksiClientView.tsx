@@ -42,13 +42,18 @@ interface SiklusItem {
 
 export default function SiklusProduksiClientView() {
   const {
+    user,
     isKabupaten,
     isKecamatan,
+    isPpl,
     isPplOrDesa,
     authKecamatan,
     authDesa,
+    isLockedDesa,
+    authDesaList,
     authKecamatanName,
     authDesaName,
+    canEditOrDeleteRecord,
   } = useAuthority();
   const [data, setData] = useState<SiklusItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -75,10 +80,10 @@ export default function SiklusProduksiClientView() {
     if (!isKabupaten && authKecamatan) {
       setSelectedKec(authKecamatan);
     }
-    if (authDesa) {
+    if (isLockedDesa && authDesa) {
       setSelectedDesa(authDesa);
     }
-  }, [isKabupaten, authKecamatan, authDesa]);
+  }, [isKabupaten, authKecamatan, authDesa, isLockedDesa]);
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -100,15 +105,9 @@ export default function SiklusProduksiClientView() {
 
   const [alert, setAlert] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  const canEditOrDelete = (itemKec?: string, itemDesa?: string) => {
-    if (isKabupaten) return true;
-    if (isKecamatan) return itemKec === authKecamatan;
-    if (isPplOrDesa) {
-      if (authKecamatan && itemKec !== authKecamatan) return false;
-      if (authDesa && itemDesa !== authDesa) return false;
-      return true;
-    }
-    return false;
+  const canEditOrDelete = (itemKec?: string, itemDesa?: string, jenis?: string) => {
+    const sector = jenis === "KOLAM" ? "perikanan" : jenis === "PETERNAKAN" ? "peternakan" : "pertanian";
+    return canEditOrDeleteRecord(itemKec, itemDesa, sector);
   };
 
   const loadUnits = async () => {
@@ -166,6 +165,7 @@ export default function SiklusProduksiClientView() {
   // Filtered Desa based on selected Kecamatan for filter toolbar
   const filterDesaOptions = desaList.filter((d) => {
     if (selectedKec !== "semua" && d.kd_kecamatan !== selectedKec) return false;
+    if (isPpl && authDesaList.length > 0) return authDesaList.includes(d.kd_desa);
     if (authDesa && d.kd_desa !== authDesa) return false;
     return true;
   });
@@ -329,7 +329,7 @@ export default function SiklusProduksiClientView() {
 
             {/* Filter Desa (tampil ketika kecamatan dipilih) */}
             {selectedKec !== "semua" && (
-              authDesa ? (
+              isLockedDesa ? (
                 <div className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700" title="Wilayah Desa Otoritas Anda">
                   <Lock size={12} className="text-blue-600" />
                   <span>{desaList.find((d) => d.kd_desa === authDesa)?.nm_desa || authDesaName || authDesa}</span>
@@ -343,7 +343,9 @@ export default function SiklusProduksiClientView() {
                   }}
                   className="text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 max-w-[200px]"
                 >
-                  <option value="semua">Semua Desa</option>
+                  <option value="semua">
+                    {isPpl ? `Semua Desa Tugas (${filterDesaOptions.length} Desa)` : "Semua Desa"}
+                  </option>
                   {filterDesaOptions.map((d) => (
                     <option key={d.kd_desa} value={d.kd_desa}>
                       {d.nm_desa}
@@ -485,7 +487,8 @@ export default function SiklusProduksiClientView() {
                       <td className="p-3.5 text-right">
                         {canEditOrDelete(
                           s.kebun?.kd_kecamatan || s.kolam?.kd_kecamatan || s.peternakan?.kd_kecamatan,
-                          s.kebun?.kd_desa || s.kolam?.kd_desa || s.peternakan?.kd_desa
+                          s.kebun?.kd_desa || s.kolam?.kd_desa || s.peternakan?.kd_desa,
+                          s.jenisUsaha
                         ) ? (
                           <div className="flex items-center justify-end gap-1.5">
                             <button

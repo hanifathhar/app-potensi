@@ -97,16 +97,26 @@ export default function Sidebar({
       icon: <LayoutDashboard size={18} />,
       href: "/dashboard",
     },
-    {
-      title: "Data Wilayah",
-      icon: <MapPin size={18} />,
-      href: "/wilayah",
-    },
-    {
-      title: "Kelompok Tani",
-      icon: <Users size={18} />,
-      href: "/kelompok-tani",
-    },
+    // Rule 4: Data Wilayah (Master Kecamatan & Desa) hanya untuk Superadmin & Admin Kabupaten
+    ...(isSuperOrKabupaten
+      ? [
+          {
+            title: "Data Wilayah",
+            icon: <MapPin size={18} />,
+            href: "/wilayah",
+          },
+        ]
+      : []),
+    // Rule 2: Admin Dinas Perikanan hanya bisa akses data perikanan (hide Kelompok Tani)
+    ...(role !== "ADMIN_PERIKANAN"
+      ? [
+          {
+            title: "Kelompok Tani",
+            icon: <Users size={18} />,
+            href: "/kelompok-tani",
+          },
+        ]
+      : []),
   ];
 
   const potensiItems = [
@@ -143,11 +153,16 @@ export default function Sidebar({
   });
 
   const bottomNavItems = [
-    {
-      title: "Pendanaan",
-      icon: <Wallet size={18} />,
-      href: "/pendanaan",
-    },
+    // Rule 2: Admin Dinas Perikanan hanya bisa akses data perikanan
+    ...(role !== "ADMIN_PERIKANAN"
+      ? [
+          {
+            title: "Pendanaan",
+            icon: <Wallet size={18} />,
+            href: "/pendanaan",
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -306,44 +321,44 @@ export default function Sidebar({
           })}
 
 
-          {/* Pengaturan dengan Sub-Menu */}
-          <div className="pt-1.5">
-            <button
-              onClick={() => setPengaturanOpen(!pengaturanOpen)}
-              className={`w-full flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 ${pathname.startsWith("/pengaturan")
-                ? "bg-[#12382b] text-white font-semibold"
-                : "text-slate-300 hover:bg-[#12382b] hover:text-white"
-                }`}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-emerald-400/80">
-                  <Settings size={18} />
+          {/* Rule 4: Data Master (Pengaturan Komoditas & Manajemen Pengguna) hanya untuk Superadmin & Admin Kabupaten */}
+          {isSuperOrKabupaten && (
+            <div className="pt-1.5">
+              <button
+                onClick={() => setPengaturanOpen(!pengaturanOpen)}
+                className={`w-full flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 ${pathname.startsWith("/pengaturan")
+                  ? "bg-[#12382b] text-white font-semibold"
+                  : "text-slate-300 hover:bg-[#12382b] hover:text-white"
+                  }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-emerald-400/80">
+                    <Settings size={18} />
+                  </span>
+                  <span>Pengaturan</span>
+                </div>
+                <span className="text-emerald-400/60">
+                  {pengaturanOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                 </span>
-                <span>Pengaturan</span>
-              </div>
-              <span className="text-emerald-400/60">
-                {pengaturanOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-              </span>
-            </button>
+              </button>
 
-            {/* Sub-menu items */}
-            {pengaturanOpen && (
-              <div className="mt-1 ml-4 pl-3 border-l border-emerald-800/60 space-y-1">
-                {/* Sub-menu 1: Master Komoditas */}
-                <Link
-                  href="/pengaturan/komoditas"
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[11px] font-medium transition-all ${pathname === "/pengaturan/komoditas"
-                    ? "bg-[#16a34a] text-white font-semibold shadow-xs"
-                    : "text-slate-300 hover:bg-[#12382b] hover:text-white"
-                    }`}
-                >
-                  <Sprout size={14} className={pathname === "/pengaturan/komoditas" ? "text-white" : "text-emerald-400"} />
-                  <span>Master Komoditas</span>
-                </Link>
+              {/* Sub-menu items */}
+              {pengaturanOpen && (
+                <div className="mt-1 ml-4 pl-3 border-l border-emerald-800/60 space-y-1">
+                  {/* Sub-menu 1: Master Komoditas */}
+                  <Link
+                    href="/pengaturan/komoditas"
+                    onClick={() => setSidebarOpen(false)}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[11px] font-medium transition-all ${pathname === "/pengaturan/komoditas"
+                      ? "bg-[#16a34a] text-white font-semibold shadow-xs"
+                      : "text-slate-300 hover:bg-[#12382b] hover:text-white"
+                      }`}
+                  >
+                    <Sprout size={14} className={pathname === "/pengaturan/komoditas" ? "text-white" : "text-emerald-400"} />
+                    <span>Master Komoditas</span>
+                  </Link>
 
-                {/* Sub-menu 2: Manajemen Pengguna (Hanya Admin Kabupaten / Superadmin) */}
-                {isSuperOrKabupaten && (
+                  {/* Sub-menu 2: Manajemen Pengguna */}
                   <Link
                     href="/pengaturan/pengguna"
                     onClick={() => setSidebarOpen(false)}
@@ -355,10 +370,10 @@ export default function Sidebar({
                     <Users size={14} className={pathname === "/pengaturan/pengguna" ? "text-white" : "text-purple-400"} />
                     <span>Manajemen Pengguna</span>
                   </Link>
-                )}
-              </div>
-            )}
-          </div>
+                </div>
+              )}
+            </div>
+          )}
         </nav>
 
         {/* User Card & Logout Bottom */}

@@ -58,13 +58,17 @@ export default function PerikananClientView() {
     user,
     isKabupaten,
     isKecamatan,
+    isPpl,
     isPplOrDesa,
+    isLockedDesa,
     authKecamatan,
     authDesa,
+    authDesaList,
     authKecamatanName,
     authDesaName,
     canChangeKecamatan,
     canChangeDesa,
+    canEditOrDeleteRecord,
   } = useAuthority();
 
   const [data, setData] = useState<KolamItem[]>([]);
@@ -105,10 +109,10 @@ export default function PerikananClientView() {
     if (!isKabupaten && authKecamatan) {
       setSelectedKec(authKecamatan);
     }
-    if (authDesa) {
+    if (isLockedDesa && authDesa) {
       setSelectedDesa(authDesa);
     }
-  }, [isKabupaten, authKecamatan, authDesa]);
+  }, [isKabupaten, authKecamatan, isLockedDesa, authDesa]);
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -215,6 +219,7 @@ export default function PerikananClientView() {
   // Filtered Desa based on selected Kecamatan for filter toolbar
   const filterDesaOptions = desaList.filter((d) => {
     if (selectedKec !== "semua" && d.kd_kecamatan !== selectedKec) return false;
+    if (isPpl && authDesaList.length > 0) return authDesaList.includes(d.kd_desa);
     if (authDesa && d.kd_desa !== authDesa) return false;
     return true;
   });
@@ -222,6 +227,7 @@ export default function PerikananClientView() {
   // Filter desas according to territory authority
   const availableDesas = desaList.filter((d) => {
     if (d.kd_kecamatan !== formKdKecamatan) return false;
+    if (isPpl && authDesaList.length > 0) return authDesaList.includes(d.kd_desa);
     if (isPplOrDesa && authDesa && d.kd_desa !== authDesa) return false;
     return true;
   });
@@ -257,14 +263,7 @@ export default function PerikananClientView() {
   };
 
   const canEditOrDelete = (itemKecamatan: string, itemDesa: string) => {
-    if (isKabupaten) return true;
-    if (isKecamatan) return itemKecamatan === authKecamatan;
-    if (isPplOrDesa) {
-      if (authKecamatan && itemKecamatan !== authKecamatan) return false;
-      if (authDesa && itemDesa !== authDesa) return false;
-      return true;
-    }
-    return false;
+    return canEditOrDeleteRecord(itemKecamatan, itemDesa, "perikanan");
   };
 
   const openTambah = () => {
@@ -274,9 +273,15 @@ export default function PerikananClientView() {
       defaultKec = authKecamatan;
     }
 
-    const desasOfKec = desaList.filter((d) => d.kd_kecamatan === defaultKec);
+    const desasOfKec = desaList.filter((d) => {
+      if (d.kd_kecamatan !== defaultKec) return false;
+      if (isPpl && authDesaList.length > 0) return authDesaList.includes(d.kd_desa);
+      return true;
+    });
     let defaultDesa = desasOfKec[0]?.kd_desa || "";
-    if (isPplOrDesa && authDesa) {
+    if (isPpl && authDesaList.length > 0) {
+      defaultDesa = authDesaList[0];
+    } else if (isPplOrDesa && authDesa) {
       defaultDesa = authDesa;
     }
 
@@ -454,7 +459,7 @@ export default function PerikananClientView() {
 
             {/* Filter Desa (tampil ketika kecamatan dipilih) */}
             {selectedKec !== "semua" && (
-              authDesa ? (
+              isLockedDesa ? (
                 <div className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700" title="Wilayah Desa Otoritas Anda">
                   <Lock size={12} className="text-blue-600" />
                   <span>{desaList.find((d) => d.kd_desa === authDesa)?.nm_desa || authDesaName || authDesa}</span>
@@ -466,9 +471,11 @@ export default function PerikananClientView() {
                     setSelectedDesa(e.target.value);
                     setPage(1);
                   }}
-                  className="text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-600 max-w-[200px]"
+                  className="text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-600 max-w-[220px]"
                 >
-                  <option value="semua">Semua Desa</option>
+                  <option value="semua">
+                    {isPpl ? `Semua Desa Tugas (${filterDesaOptions.length} Desa)` : "Semua Desa"}
+                  </option>
                   {filterDesaOptions.map((d) => (
                     <option key={d.kd_desa} value={d.kd_desa}>
                       {d.nm_desa}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getUserFromRequest, isAuthorizedForMasterData } from "@/lib/auth";
 
 export async function GET(request: Request) {
   try {
@@ -46,6 +47,14 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const user = getUserFromRequest(request);
+    if (!isAuthorizedForMasterData(user)) {
+      return NextResponse.json(
+        { success: false, error: "Akses Ditolak: Hanya Superadmin dan Admin Kabupaten yang dapat mengelola data master kecamatan." },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { kd_kecamatan, nm_kecamatan } = body;
 
@@ -76,6 +85,14 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const user = getUserFromRequest(request);
+    if (!isAuthorizedForMasterData(user)) {
+      return NextResponse.json(
+        { success: false, error: "Akses Ditolak: Hanya Superadmin dan Admin Kabupaten yang dapat mengelola data master kecamatan." },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { id, kd_kecamatan, nm_kecamatan, aktif } = body;
 
@@ -100,6 +117,14 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const user = getUserFromRequest(request);
+    if (!isAuthorizedForMasterData(user)) {
+      return NextResponse.json(
+        { success: false, error: "Akses Ditolak: Hanya Superadmin dan Admin Kabupaten yang dapat mengelola data master kecamatan." },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 

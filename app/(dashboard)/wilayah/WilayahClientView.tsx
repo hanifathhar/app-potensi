@@ -47,6 +47,7 @@ interface DesaItem {
 export default function WilayahClientView() {
   const {
     user,
+    isMasterDataAdmin,
     isKabupaten,
     isKecamatan,
     isPplOrDesa,
@@ -171,18 +172,11 @@ export default function WilayahClientView() {
   }, [desaSearch, selectedKecFilter, desaPage]);
 
   const canEditOrDeleteDesa = (itemKecamatan: string, itemDesa: string) => {
-    if (isKabupaten) return true;
-    if (isKecamatan) return itemKecamatan === authKecamatan;
-    if (isPplOrDesa) {
-      if (authKecamatan && itemKecamatan !== authKecamatan) return false;
-      if (authDesa && itemDesa !== authDesa) return false;
-      return true;
-    }
-    return false;
+    return isMasterDataAdmin;
   };
 
   const openTambahKecamatan = () => {
-    if (!isKabupaten) return;
+    if (!isMasterDataAdmin) return;
     setEditItem(null);
     setFormKdKecamatan("");
     setFormNmKecamatan("");
@@ -191,7 +185,7 @@ export default function WilayahClientView() {
   };
 
   const openEditKecamatan = (item: KecamatanItem) => {
-    if (!isKabupaten) return;
+    if (!isMasterDataAdmin) return;
     setEditItem(item);
     setFormKdKecamatan(item.kd_kecamatan);
     setFormNmKecamatan(item.nm_kecamatan);
@@ -200,11 +194,9 @@ export default function WilayahClientView() {
   };
 
   const openTambahDesa = () => {
+    if (!isMasterDataAdmin) return;
     setEditItem(null);
     let defaultKec = allKecamatanList[0]?.kd_kecamatan || "";
-    if (!isKabupaten && authKecamatan) {
-      defaultKec = authKecamatan;
-    }
     setFormKdDesa("");
     setFormNmDesa("");
     setFormDesaKecamatan(defaultKec);
@@ -216,6 +208,7 @@ export default function WilayahClientView() {
   };
 
   const openEditDesa = (item: DesaItem) => {
+    if (!isMasterDataAdmin) return;
     setEditItem(item);
     setFormKdDesa(item.kd_desa);
     setFormNmDesa(item.nm_desa);

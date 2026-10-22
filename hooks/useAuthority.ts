@@ -7,10 +7,19 @@ export interface UserAuthData {
   nama: string;
   username: string;
   email?: string | null;
-  peran: "SUPERADMIN" | "ADMIN_KABUPATEN" | "ADMIN_KECAMATAN" | "ADMIN_DESA" | "PETUGAS" | "KELOMPOK_TANI";
+  peran:
+    | "SUPERADMIN"
+    | "ADMIN_KABUPATEN"
+    | "ADMIN_PERTANIAN"
+    | "ADMIN_PERIKANAN"
+    | "ADMIN_KECAMATAN"
+    | "ADMIN_DESA"
+    | "PETUGAS"
+    | "KELOMPOK_TANI";
   role: string;
   kd_kecamatan?: string | null;
   kd_desa?: string | null;
+  kd_desa_list?: string[];
   kecamatan?: { kd_kecamatan: string; nm_kecamatan: string } | null;
   desa?: { kd_desa: string; nm_desa: string } | null;
 }
@@ -48,30 +57,99 @@ export function useAuthority() {
   }, []);
 
   const peran = user?.peran || user?.role || "";
-  const isKabupaten = peran === "SUPERADMIN" || peran === "ADMIN_KABUPATEN";
+
+  // Role checks
+  const isSuperAdmin = peran === "SUPERADMIN";
+  const isMasterDataAdmin = peran === "SUPERADMIN" || peran === "ADMIN_KABUPATEN";
+  const isPertanianAdmin = peran === "ADMIN_PERTANIAN";
+  const isPerikananAdmin = peran === "ADMIN_PERIKANAN";
+  const isDinas = isPertanianAdmin || isPerikananAdmin;
+
+  // Level territorial cakupan: Superadmin, Admin Kabupaten, dan Admin Dinas bekerja di tingkat Kabupaten
+  const isKabupaten = isMasterDataAdmin || isDinas;
   const isKecamatan = peran === "ADMIN_KECAMATAN";
-  const isPplOrDesa = peran === "PETUGAS" || peran === "ADMIN_DESA" || peran === "KELOMPOK_TANI";
+  const isPpl = peran === "PETUGAS";
+  const isPplOrDesa = isPpl || peran === "ADMIN_DESA" || peran === "KELOMPOK_TANI";
 
   const authKecamatan = user?.kd_kecamatan || "";
-  const authDesa = user?.kd_desa || "";
+  const rawAuthDesa = user?.kd_desa || "";
+  const authDesaList = user?.kd_desa_list && user.kd_desa_list.length > 0
+    ? user.kd_desa_list
+    : rawAuthDesa
+    ? [rawAuthDesa]
+    : [];
+
+  // Rule 3: Petugas PPL ditugaskan di banyak desa dalam 1 kecamatan (kd_desa_list).
+  // PPL TIDAK boleh dikunci ke satu desa tunggal. Hanya ADMIN_DESA atau KELOMPOK_TANI yang terkunci ke satu desa.
+  const isLockedDesa = !isPpl && !isKabupaten && !isKecamatan && Boolean(rawAuthDesa);
+  const authDesa = isLockedDesa ? rawAuthDesa : "";
+
   const authKecamatanName = user?.kecamatan?.nm_kecamatan || "";
   const authDesaName = user?.desa?.nm_desa || "";
 
   const canChangeKecamatan = isKabupaten;
-  const canChangeDesa = isKabupaten || (isKecamatan && !user?.kd_desa);
+  const canChangeDesa = isKabupaten || isKecamatan || isPpl || !isLockedDesa;
+
+  // Rule 1 & 2: Akses sektor
+  const canAccessSector = (sector: "pertanian" | "perikanan" | "peternakan") => {
+    if (isPertanianAdmin) return sector !== "perikanan";
+    if (isPerikananAdmin) return sector === "perikanan";
+    return true;
+  };
+
+  // Rule 1, 2, 3: Otoritas input, edit, dan hapus data
+  const canEditOrDeleteRecord = (
+    itemKecamatan?: string | null,
+    itemDesa?: string | null,
+    sector?: "pertanian" | "perikanan" | "peternakan"
+  ) => {
+    if (sector && !canAccessSector(sector)) return false;
+    if (isMasterDataAdmin) return true;
+    if (isPertanianAdmin) return sector !== "perikanan";
+    if (isPerikananAdmin) return sector === "perikanan";
+    if (isKecamatan) return Boolean(itemKecamatan && itemKecamatan === authKecamatan);
+
+    // Rule 3: Petugas PPL hanya dalam satu kecamatan dan desa yang ditugaskan
+    if (isPpl) {
+      if (itemKecamatan && authKecamatan && itemKecamatan !== authKecamatan) return false;
+      if (authDesaList.length > 0 && itemDesa) {
+        return authDesaList.includes(itemDesa);
+      }
+      return true;
+    }
+
+    if (isPplOrDesa) {
+      if (authKecamatan && itemKecamatan !== authKecamatan) return false;
+      if (authDesa && itemDesa !== authDesa) return false;
+      return true;
+    }
+
+    return false;
+  };
 
   return {
     user,
     loading,
     peran,
+    isSuperAdmin,
+    isMasterDataAdmin,
+    isPertanianAdmin,
+    isPerikananAdmin,
+    isDinas,
     isKabupaten,
     isKecamatan,
+    isPpl,
     isPplOrDesa,
     authKecamatan,
     authDesa,
+    rawAuthDesa,
+    authDesaList,
+    isLockedDesa,
     authKecamatanName,
     authDesaName,
     canChangeKecamatan,
     canChangeDesa,
+    canAccessSector,
+    canEditOrDeleteRecord,
   };
 }

@@ -26,13 +26,8 @@ export default async function ManajemenPenggunaPage() {
             Pengelolaan akun pengguna dan pembagian otoritas wilayah (Role-Based Access Control)
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
-            <ShieldCheck size={14} /> Keamanan RBAC Aktif
-          </span>
-        </div>
-      </div>
 
+      </div>
       <PenggunaClientView kecamatans={kecamatans} desas={desas} />
     </div>
   );

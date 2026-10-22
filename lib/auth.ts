@@ -87,6 +87,14 @@ export function canAccessSector(
 }
 
 /**
+ * Rule 4: Data master hanya bisa diakses oleh superadmin/admin kabupaten
+ */
+export function isAuthorizedForMasterData(user: UserAuth | null): boolean {
+  if (!user) return false;
+  return user.peran === "SUPERADMIN" || user.peran === "ADMIN_KABUPATEN";
+}
+
+/**
  * Returns Prisma filter clause based on User Role & Authority
  */
 export function getAuthorityFilter(
