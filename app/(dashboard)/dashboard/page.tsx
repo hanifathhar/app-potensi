@@ -121,11 +121,17 @@ export default function DashboardTaniTapselPage() {
   };
 
   const chartData = data?.chartData || [];
-  const komposisiData = data?.komposisiData || {
-    total: 0,
-    displayTotal: "0",
-    items: [],
-  };
+  const komposisiData =
+    isPerikananAdmin && data?.komposisiKolamData
+      ? data.komposisiKolamData
+      : data?.komposisiData || {
+          title: "Komposisi Data",
+          subtitle: "Persentase masing-masing sektor",
+          total: 0,
+          displayTotal: "0",
+          unitLabel: "Data",
+          items: [],
+        };
   const detailPertanian = data?.detailPertanian || {
     totalUnit: 0,
     totalLuasHa: 0,
@@ -596,16 +602,23 @@ export default function DashboardTaniTapselPage() {
               </div>
             </div>
 
-            {/* KARTU KANAN: Komposisi Data (Donut Chart) (4 Cols) */}
+            {/* KARTU KANAN: Komposisi Data / Komposisi Komoditas Kolam (Donut Chart) (4 Cols) */}
             <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col justify-between">
               <div>
                 {/* Header Card */}
                 <div>
-                  <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
-                    Komposisi Data
+                  <h3 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                    {isPerikananAdmin && <Fish size={18} className="text-sky-600" />}
+                    <span>
+                      {isPerikananAdmin
+                        ? "Komposisi Komoditas Kolam"
+                        : komposisiData.title || "Komposisi Data"}
+                    </span>
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                    Persentase masing-masing sektor
+                    {isPerikananAdmin
+                      ? "Persentase komoditas perikanan budidaya"
+                      : komposisiData.subtitle || "Persentase masing-masing sektor"}
                   </p>
                 </div>
 
@@ -622,7 +635,7 @@ export default function DashboardTaniTapselPage() {
                           fontSize: "12px",
                         }}
                         formatter={(val: any, name: any) => [
-                          `${val} unit (${(
+                          `${val} ${isPerikananAdmin ? "kolam" : "unit"} (${(
                             (Number(val) / (komposisiData.total || 1)) *
                             100
                           ).toFixed(2)}%)`,
@@ -657,7 +670,7 @@ export default function DashboardTaniTapselPage() {
                       {komposisiData.displayTotal}
                     </span>
                     <span className="text-[11px] font-medium text-slate-500">
-                      Data
+                      {isPerikananAdmin ? "Kolam" : (komposisiData.unitLabel || "Data")}
                     </span>
                   </div>
                 </div>
@@ -668,9 +681,13 @@ export default function DashboardTaniTapselPage() {
                     <div
                       key={item.key}
                       onClick={() => {
-                        if (item.key === "kolam") setActiveTab("perikanan");
-                        else if (item.key === "pertanian") setActiveTab("pertanian");
-                        else if (item.key === "peternakan") setActiveTab("peternakan");
+                        if (isPerikananAdmin) {
+                          setActiveTab("perikanan");
+                        } else {
+                          if (item.key === "kolam") setActiveTab("perikanan");
+                          else if (item.key === "pertanian") setActiveTab("pertanian");
+                          else if (item.key === "peternakan") setActiveTab("peternakan");
+                        }
                       }}
                       className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 transition cursor-pointer"
                     >
@@ -695,7 +712,11 @@ export default function DashboardTaniTapselPage() {
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-                <span>Sumber: Dinas Pertanian & Dinas Perikanan</span>
+                <span>
+                  {isPerikananAdmin
+                    ? "Sumber: Dinas Perikanan Tapsel"
+                    : "Sumber: Dinas Pertanian & Dinas Perikanan"}
+                </span>
                 <span className="font-semibold text-emerald-700">100% Terverifikasi</span>
               </div>
             </div>

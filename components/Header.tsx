@@ -87,7 +87,7 @@ export default function Header({
                   {user?.nama || "Admin Kabupaten"}
                 </p>
                 <p className="text-[10px] text-slate-500 font-medium">
-                  {formatRoleName(user?.role)} - Dinas Pertanian
+                  {formatRoleName(user?.role)}
                 </p>
               </div>
 

@@ -94,13 +94,15 @@ export async function POST(request: Request) {
       );
     }
 
+    const cleanUsername = username?.trim();
+
     // Check duplicate username
     const existing = await prisma.pengguna.findFirst({
-      where: { username },
+      where: { username: cleanUsername },
     });
     if (existing) {
       return NextResponse.json(
-        { success: false, error: "Username sudah terdaftar, silakan gunakan username lain" },
+        { success: false, error: `Username "${cleanUsername}" sudah terdaftar. Silakan gunakan username lain.` },
         { status: 400 }
       );
     }
@@ -143,8 +145,8 @@ export async function POST(request: Request) {
 
     const created = await prisma.pengguna.create({
       data: {
-        nama,
-        username,
+        nama: nama?.trim(),
+        username: cleanUsername,
         email: email && email.trim().length > 0 ? email.trim() : null,
         passwordHash,
         peran: peran as PeranPengguna,
@@ -158,6 +160,12 @@ export async function POST(request: Request) {
     const { passwordHash: _, ...rest } = created;
     return NextResponse.json({ success: true, data: rest });
   } catch (error: any) {
+    if (error?.code === "P2002" || error?.message?.includes("Unique constraint")) {
+      return NextResponse.json(
+        { success: false, error: "Username sudah terdaftar. Silakan gunakan username lain." },
+        { status: 400 }
+      );
+    }
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
@@ -177,6 +185,29 @@ export async function PUT(request: Request) {
 
     if (!id) {
       return NextResponse.json({ success: false, error: "ID Pengguna wajib diisi" }, { status: 400 });
+    }
+
+    const cleanUsername = username?.trim();
+    if (!cleanUsername) {
+      return NextResponse.json({ success: false, error: "Username wajib diisi" }, { status: 400 });
+    }
+
+    // Check duplicate username across other users
+    const existing = await prisma.pengguna.findFirst({
+      where: {
+        username: cleanUsername,
+        NOT: { id },
+      },
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Username "${cleanUsername}" sudah digunakan oleh pengguna lain. Silakan pilih username yang berbeda.`,
+        },
+        { status: 400 }
+      );
     }
 
     // Rule 3: Validasi penugasan desa untuk PPL (harus di dalam 1 kecamatan)
@@ -214,8 +245,8 @@ export async function PUT(request: Request) {
     }
 
     const updateData: any = {
-      nama,
-      username,
+      nama: nama?.trim(),
+      username: cleanUsername,
       email: email && email.trim().length > 0 ? email.trim() : null,
       peran: peran as PeranPengguna,
       kd_kecamatan: kd_kecamatan && kd_kecamatan.trim().length > 0 ? kd_kecamatan.trim() : null,
@@ -236,6 +267,15 @@ export async function PUT(request: Request) {
     const { passwordHash: _, ...rest } = updated;
     return NextResponse.json({ success: true, data: rest });
   } catch (error: any) {
+    if (error?.code === "P2002" || error?.message?.includes("Unique constraint")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Username sudah digunakan oleh pengguna lain. Silakan pilih username yang berbeda.",
+        },
+        { status: 400 }
+      );
+    }
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

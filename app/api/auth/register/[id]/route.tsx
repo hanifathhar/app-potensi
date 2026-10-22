@@ -75,13 +75,35 @@ export async function PUT(
       dataToUpdate.passwordHash = hashedPassword;
     }
 
+    if (username) {
+      const cleanUsername = username.trim();
+      const existingUser = await prisma.pengguna.findFirst({
+        where: {
+          username: cleanUsername,
+          NOT: { id },
+        },
+      });
+      if (existingUser) {
+        return NextResponse.json(
+          { error: `Username "${cleanUsername}" sudah digunakan oleh pengguna lain` },
+          { status: 400 }
+        );
+      }
+    }
+
     const updatedUser = await prisma.pengguna.update({
       where: { id },
       data: dataToUpdate,
     });
 
     return NextResponse.json(updatedUser);
-  } catch (error: unknown) {
+  } catch (error: any) {
+    if (error?.code === "P2002" || error?.message?.includes("Unique constraint")) {
+      return NextResponse.json(
+        { error: "Username sudah digunakan oleh pengguna lain" },
+        { status: 400 }
+      );
+    }
     const message =
       error instanceof Error ? error.message : "Terjadi kesalahan";
 

@@ -394,7 +394,7 @@ export default function Sidebar({
               <p className="text-[10px] text-emerald-300/80 truncate font-medium">
                 {userInfo?.kecamatan
                   ? `${userInfo.role?.replace(/_/g, " ")} (${userInfo.kecamatan.nm_kecamatan})`
-                  : userInfo?.role?.replace(/_/g, " ") || "Dinas Pertanian"}
+                  : userInfo?.role?.replace(/_/g, " ") || ""}
               </p>
             </div>
           </div>

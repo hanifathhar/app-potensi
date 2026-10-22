@@ -567,43 +567,7 @@ export async function GET(request: Request) {
       })),
     ];
 
-    // 8. Komposisi Sektor untuk Donut Chart
-    const totalSektorData = totalKolam + totalKebun + totalPeternakan;
-    const komposisiItems: any[] = [];
-    if (allowPerikanan) {
-      komposisiItems.push({
-        name: "Kolam",
-        key: "kolam",
-        count: totalKolam,
-        percentage: totalSektorData > 0 ? Number(((totalKolam / totalSektorData) * 100).toFixed(2)) : 0,
-        color: "#0284c7",
-      });
-    }
-    if (allowPertanian) {
-      komposisiItems.push({
-        name: "Pertanian / Kebun",
-        key: "pertanian",
-        count: totalKebun,
-        percentage: totalSektorData > 0 ? Number(((totalKebun / totalSektorData) * 100).toFixed(2)) : 0,
-        color: "#16a34a",
-      });
-    }
-    if (allowPeternakan) {
-      komposisiItems.push({
-        name: "Peternakan",
-        key: "peternakan",
-        count: totalPeternakan,
-        percentage: totalSektorData > 0 ? Number(((totalPeternakan / totalSektorData) * 100).toFixed(2)) : 0,
-        color: "#ea580c",
-      });
-    }
-    const komposisiData = {
-      total: totalSektorData,
-      displayTotal: totalSektorData.toLocaleString("id-ID"),
-      items: komposisiItems,
-    };
-
-    // 9. Detail Penjabaran Khusus Masing-masing Sektor
+    // 8. Helper & Komposisi Penjabaran Komoditas
     const buildKomoditasList = (
       jenisUsaha: "KEBUN" | "KOLAM" | "PETERNAKAN",
       groupByData: { kd_komoditas: string; _count: { id: number } }[]
@@ -637,6 +601,85 @@ export async function GET(request: Request) {
 
       return Array.from(komMap.values()).sort((a, b) => b.count - a.count);
     };
+
+    // Komposisi Komoditas Kolam (Khusus Perikanan)
+    const kolamKomoditasList = buildKomoditasList("KOLAM", kolamByKomoditas);
+    const activeKolamKomoditas = kolamKomoditasList.filter((k) => k.count > 0);
+    const totalKolamKomoditasCount = activeKolamKomoditas.reduce((acc, curr) => acc + curr.count, 0) || totalKolam;
+
+    const kolamPalette = [
+      "#0284c7", // Sky 600
+      "#0d9488", // Teal 600
+      "#2563eb", // Blue 600
+      "#06b6d4", // Cyan 500
+      "#6366f1", // Indigo 500
+      "#7c3aed", // Violet 600
+      "#db2777", // Pink 600
+      "#ea580c", // Orange 600
+      "#d97706", // Amber 600
+    ];
+
+    const komposisiKolamItems = activeKolamKomoditas.map((k, idx) => ({
+      name: k.nama,
+      key: k.kode,
+      count: k.count,
+      percentage: totalKolamKomoditasCount > 0 ? Number(((k.count / totalKolamKomoditasCount) * 100).toFixed(2)) : 0,
+      color: kolamPalette[idx % kolamPalette.length],
+    }));
+
+    const komposisiKolamData = {
+      title: "Komposisi Komoditas Kolam",
+      subtitle: "Persentase berdasarkan jenis komoditas kolam budidaya",
+      total: totalKolamKomoditasCount,
+      displayTotal: totalKolamKomoditasCount.toLocaleString("id-ID"),
+      unitLabel: "Kolam",
+      items: komposisiKolamItems,
+    };
+
+    // Komposisi Sektor Umum untuk Donut Chart
+    const totalSektorData = totalKolam + totalKebun + totalPeternakan;
+    const komposisiItems: any[] = [];
+    if (allowPerikanan) {
+      komposisiItems.push({
+        name: "Kolam",
+        key: "kolam",
+        count: totalKolam,
+        percentage: totalSektorData > 0 ? Number(((totalKolam / totalSektorData) * 100).toFixed(2)) : 0,
+        color: "#0284c7",
+      });
+    }
+    if (allowPertanian) {
+      komposisiItems.push({
+        name: "Pertanian / Kebun",
+        key: "pertanian",
+        count: totalKebun,
+        percentage: totalSektorData > 0 ? Number(((totalKebun / totalSektorData) * 100).toFixed(2)) : 0,
+        color: "#16a34a",
+      });
+    }
+    if (allowPeternakan) {
+      komposisiItems.push({
+        name: "Peternakan",
+        key: "peternakan",
+        count: totalPeternakan,
+        percentage: totalSektorData > 0 ? Number(((totalPeternakan / totalSektorData) * 100).toFixed(2)) : 0,
+        color: "#ea580c",
+      });
+    }
+
+    let komposisiData = {
+      title: "Komposisi Data",
+      subtitle: "Persentase masing-masing sektor",
+      total: totalSektorData,
+      displayTotal: totalSektorData.toLocaleString("id-ID"),
+      unitLabel: "Data",
+      items: komposisiItems,
+    };
+
+    // Khusus Admin Perikanan: ganti komposisi data utama dengan komposisi komoditas kolam
+    if (user?.peran === "ADMIN_PERIKANAN") {
+      komposisiData = komposisiKolamData;
+    }
 
     const totalLuasKebunHa = Number(sumLuasKebun._sum.luasLahanHa || 0);
     const detailPertanian = {
@@ -722,6 +765,7 @@ export async function GET(request: Request) {
       metrics,
       chartData,
       komposisiData,
+      komposisiKolamData,
       detailPertanian,
       detailPerikanan,
       detailPeternakan,

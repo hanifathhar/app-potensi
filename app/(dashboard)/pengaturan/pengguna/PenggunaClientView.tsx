@@ -15,7 +15,9 @@ import {
   CheckSquare,
   Square,
   MapPin,
+  AlertCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface PenggunaItem {
   id: string;
@@ -76,6 +78,7 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
   const [desaSearchModal, setDesaSearchModal] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const getDesaName = (kd_desa: string) => {
     const found = desas.find((d) => d.kd_desa === kd_desa);
@@ -146,9 +149,22 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
+    const trimmedUsername = formData.username.trim();
+    const trimmedNama = formData.nama.trim();
+
+    if (!trimmedNama || !trimmedUsername) {
+      const msg = "Nama lengkap dan username wajib diisi.";
+      setFormError(msg);
+      toast.error(msg);
+      return;
+    }
 
     if (formData.peran === "PETUGAS" && !formData.kd_kecamatan) {
-      alert("Petugas PPL wajib memilih 1 kecamatan penugasan.");
+      const msg = "Petugas PPL wajib memilih 1 kecamatan penugasan.";
+      setFormError(msg);
+      toast.error(msg);
       return;
     }
 
@@ -158,6 +174,8 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
       const method = modalMode === "create" ? "POST" : "PUT";
       const payload = {
         ...formData,
+        nama: trimmedNama,
+        username: trimmedUsername,
         id: editingItem?.id,
         kd_desa_list: formData.peran === "PETUGAS" ? formData.kd_desa_list : (formData.kd_desa ? [formData.kd_desa] : []),
         kd_desa: formData.peran === "PETUGAS" ? (formData.kd_desa_list[0] || null) : (formData.kd_desa || null),
@@ -171,13 +189,23 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
 
       const json = await res.json();
       if (json.success) {
+        toast.success(
+          modalMode === "create"
+            ? "Akun pengguna baru berhasil ditambahkan"
+            : "Data pengguna berhasil diperbarui"
+        );
         setIsModalOpen(false);
+        setFormError(null);
         fetchPengguna();
       } else {
-        alert(json.error || "Gagal menyimpan akun pengguna");
+        const errorMsg = json.error || "Gagal menyimpan akun pengguna";
+        setFormError(errorMsg);
+        toast.error(errorMsg);
       }
     } catch (err: any) {
-      alert(err.message || "Terjadi kesalahan sistem");
+      const errorMsg = err.message || "Terjadi kesalahan sistem";
+      setFormError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setSaving(false);
     }
@@ -191,13 +219,14 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
       });
       const json = await res.json();
       if (json.success) {
+        toast.success("Akun pengguna berhasil dihapus");
         setDeleteId(null);
         fetchPengguna();
       } else {
-        alert(json.error || "Gagal menghapus pengguna");
+        toast.error(json.error || "Gagal menghapus pengguna");
       }
     } catch (err: any) {
-      alert(err.message || "Gagal menghapus pengguna");
+      toast.error(err.message || "Gagal menghapus pengguna");
     }
   };
 
@@ -304,6 +333,7 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
             onClick={() => {
               setModalMode("create");
               setEditingItem(null);
+              setFormError(null);
               setFormData({
                 nama: "",
                 username: "",
@@ -406,6 +436,7 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                           onClick={() => {
                             setModalMode("edit");
                             setEditingItem(u);
+                            setFormError(null);
                             setFormData({
                               nama: u.nama,
                               username: u.username,
@@ -484,7 +515,10 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                 {modalMode === "create" ? "Tambah Akun Pengguna Baru" : "Edit Akun Pengguna"}
               </h3>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setFormError(null);
+                }}
                 className="text-slate-400 hover:text-slate-600 text-lg font-bold cursor-pointer"
               >
                 ✕
@@ -492,6 +526,15 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
             </div>
 
             <form onSubmit={handleSave} className="space-y-4 text-xs">
+              {formError && (
+                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs">
+                  <AlertCircle size={16} className="text-red-600 shrink-0 mt-0.5" />
+                  <div className="flex-1 font-semibold leading-relaxed">
+                    {formError}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Nama Lengkap & Gelar</label>
                 <input
@@ -499,22 +542,42 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                   required
                   placeholder="Contoh: Rahmat Siregar, S.P."
                   value={formData.nama}
-                  onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, nama: e.target.value });
+                    if (formError) setFormError(null);
+                  }}
                   className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-[#16a34a]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Username</label>
+                  <label className="block font-bold text-slate-700 mb-1 flex items-center justify-between">
+                    <span>Username</span>
+                    {formError?.toLowerCase().includes("username") && (
+                      <span className="text-[10px] text-red-600 font-semibold">Duplikat</span>
+                    )}
+                  </label>
                   <input
                     type="text"
                     required
                     placeholder="rahmatsiregar"
                     value={formData.username}
-                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-[#16a34a]"
+                    onChange={(e) => {
+                      setFormData({ ...formData, username: e.target.value });
+                      if (formError?.toLowerCase().includes("username")) setFormError(null);
+                    }}
+                    className={`w-full px-3 py-2 border rounded-xl focus:ring-2 transition ${
+                      formError?.toLowerCase().includes("username")
+                        ? "border-red-400 bg-red-50/30 focus:ring-red-400 focus:border-red-500"
+                        : "border-slate-200 focus:ring-[#16a34a]"
+                    }`}
                   />
+                  {formError?.toLowerCase().includes("username") && (
+                    <p className="text-[10px] text-red-600 mt-1 font-medium">
+                      Username sudah digunakan. Silakan gunakan yang lain.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
@@ -714,7 +777,10 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
               <div className="pt-4 border-t flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setFormError(null);
+                  }}
                   className="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50 font-bold cursor-pointer"
                 >
                   Batal
