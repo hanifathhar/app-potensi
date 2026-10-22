@@ -149,13 +149,6 @@ export default function PertanianDetailView({ kebun }: PertanianDetailViewProps)
             <Sprout size={14} />
             <span>Tabel Pertanian</span>
           </Link>
-          <button
-            onClick={handlePrint}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition shadow-2xs cursor-pointer"
-          >
-            <Printer size={14} />
-            <span>Cetak Profil</span>
-          </button>
         </div>
       </div>
 
@@ -218,11 +211,10 @@ export default function PertanianDetailView({ kebun }: PertanianDetailViewProps)
       <div className="bg-white rounded-2xl p-1.5 border border-slate-200/80 shadow-xs flex items-center gap-1.5 overflow-x-auto print:hidden">
         <button
           onClick={() => setActiveTab("profil")}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer whitespace-nowrap ${
-            activeTab === "profil"
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer whitespace-nowrap ${activeTab === "profil"
               ? "bg-[#16a34a] text-white shadow-xs"
               : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-          }`}
+            }`}
         >
           <FileText size={15} />
           <span>Profil & Teknis Lahan</span>
@@ -230,18 +222,16 @@ export default function PertanianDetailView({ kebun }: PertanianDetailViewProps)
 
         <button
           onClick={() => setActiveTab("siklus")}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer whitespace-nowrap ${
-            activeTab === "siklus"
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer whitespace-nowrap ${activeTab === "siklus"
               ? "bg-[#16a34a] text-white shadow-xs"
               : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-          }`}
+            }`}
         >
           <Calendar size={15} />
           <span>Siklus Produksi & Jadwal Panen</span>
           <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-              activeTab === "siklus" ? "bg-white text-emerald-900" : "bg-emerald-100 text-emerald-800"
-            }`}
+            className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === "siklus" ? "bg-white text-emerald-900" : "bg-emerald-100 text-emerald-800"
+              }`}
           >
             {siklusCount}
           </span>
@@ -249,18 +239,16 @@ export default function PertanianDetailView({ kebun }: PertanianDetailViewProps)
 
         <button
           onClick={() => setActiveTab("foto")}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer whitespace-nowrap ${
-            activeTab === "foto"
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer whitespace-nowrap ${activeTab === "foto"
               ? "bg-[#16a34a] text-white shadow-xs"
               : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-          }`}
+            }`}
         >
           <Camera size={15} />
           <span>Foto Kegiatan Usaha</span>
           <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-              activeTab === "foto" ? "bg-white text-emerald-900" : "bg-slate-200 text-slate-800"
-            }`}
+            className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === "foto" ? "bg-white text-emerald-900" : "bg-slate-200 text-slate-800"
+              }`}
           >
             {fotoCount}
           </span>
