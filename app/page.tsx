@@ -295,18 +295,6 @@ export default async function LandingPage() {
                 </Link>
               </div>
             </div>
-
-            {/* Right Artistic Badge: "Tapsel Bangkit" */}
-            <div className="hidden lg:flex flex-col items-center justify-center p-6 select-none -rotate-6">
-              <div className="border-4 border-dashed border-white/40 px-8 py-4 rounded-3xl bg-white/10 backdrop-blur-sm shadow-2xl">
-                <span className="font-serif italic text-4xl sm:text-5xl font-black text-white tracking-widest drop-shadow-md">
-                  Tapsel
-                </span>
-                <span className="block font-sans text-2xl font-black text-amber-300 uppercase tracking-widest mt-1 text-center drop-shadow-sm">
-                  Bangkit
-                </span>
-              </div>
-            </div>
           </div>
         </div>
       </section>
