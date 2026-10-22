@@ -126,7 +126,7 @@ export default function LoginPage() {
             </div>
             <div>
               <h2 className="text-xl font-extrabold tracking-wider text-white">
-                DATA TANI TAPSEL
+                DATA POTENSI TAPSEL
               </h2>
               <p className="text-xs text-emerald-200/80 font-medium">
                 Pemerintah Kabupaten Tapanuli Selatan
@@ -163,7 +163,7 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10 pt-4 border-t border-emerald-800/40 text-xs text-emerald-200/60 flex items-center justify-between">
-          <span>&copy; {new Date().getFullYear()} Dinas Pertanian Kab. Tapanuli Selatan</span>
+          <span>&copy; 2026 Pemerintah Kabupaten Tapanuli Selatan. All rights reserved.</span>
           <span className="italic font-semibold text-emerald-300">
             “Data Lengkap, Petani Sejahtera, Tapsel Maju”
           </span>

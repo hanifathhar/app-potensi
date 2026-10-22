@@ -221,7 +221,7 @@ export default function DashboardTaniTapselPage() {
               <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight">
                 Selamat Datang di{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-sky-300">
-                  DATA TANI TAPSEL
+                  DATA POTENSI TAPSEL
                 </span>
               </h1>
               <p className="text-xs sm:text-sm text-emerald-100/80 mt-1 max-w-xl font-medium">

@@ -100,22 +100,22 @@ export default function Sidebar({
     // Rule 4: Data Wilayah (Master Kecamatan & Desa) hanya untuk Superadmin & Admin Kabupaten
     ...(isSuperOrKabupaten
       ? [
-          {
-            title: "Data Wilayah",
-            icon: <MapPin size={18} />,
-            href: "/wilayah",
-          },
-        ]
+        {
+          title: "Data Wilayah",
+          icon: <MapPin size={18} />,
+          href: "/wilayah",
+        },
+      ]
       : []),
     // Rule 2: Admin Dinas Perikanan hanya bisa akses data perikanan (hide Kelompok Tani)
     ...(role !== "ADMIN_PERIKANAN"
       ? [
-          {
-            title: "Kelompok Tani",
-            icon: <Users size={18} />,
-            href: "/kelompok-tani",
-          },
-        ]
+        {
+          title: "Kelompok Tani",
+          icon: <Users size={18} />,
+          href: "/kelompok-tani",
+        },
+      ]
       : []),
   ];
 
@@ -161,12 +161,12 @@ export default function Sidebar({
   const bottomNavItems = [
     ...(canAccessPendanaan
       ? [
-          {
-            title: "Pendanaan",
-            icon: <Wallet size={18} />,
-            href: "/pendanaan",
-          },
-        ]
+        {
+          title: "Pendanaan",
+          icon: <Wallet size={18} />,
+          href: "/pendanaan",
+        },
+      ]
       : []),
   ];
 
@@ -196,7 +196,7 @@ export default function Sidebar({
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-extrabold text-base tracking-wider text-white">
-                  DATA TANI
+                  DATA POTENSI
                 </span>
                 <span className="font-extrabold text-base tracking-wider text-emerald-400">
                   TAPSEL
