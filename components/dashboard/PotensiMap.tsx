@@ -22,6 +22,7 @@ import {
   Sparkles,
   Info,
   Building,
+  Compass,
 } from "lucide-react";
 
 interface MapPinItem {
@@ -83,6 +84,41 @@ interface PotensiMapProps {
   setSelectedJenis: (j: string) => void;
 }
 
+// =============================================================================
+// KONFIGURASI SPASIAL KABUPATEN TAPANULI SELATAN
+// =============================================================================
+
+// Titik Tengah Geografis Kabupaten Tapanuli Selatan
+export const TAPSEL_CENTER: [number, number] = [1.4484, 99.2681];
+export const TAPSEL_DEFAULT_ZOOM = 10;
+export const TAPSEL_MIN_ZOOM = 9;   // Kunci agar tidak bisa zoom out melewati wilayah Tapsel
+export const TAPSEL_MAX_ZOOM = 18;  // Memungkinkan zoom in detail sampai kebun/kolam/ternak
+
+// Batas Geografis Kabupaten Tapanuli Selatan (SW & NE)
+export const TAPSEL_BOUNDS: [[number, number], [number, number]] = [
+  [0.90, 98.65], // Sudut barat daya (Muara Batang Toru & Tano Tombangan)
+  [2.15, 99.75], // Sudut timur laut (Aek Bilah & Saipar Dolok Hole)
+];
+
+// Koordinat Centroid 15 Kecamatan di Kabupaten Tapanuli Selatan
+export const KECAMATAN_TAPSEL_COORDS: Record<string, { lat: number; lng: number; zoom: number }> = {
+  "sipirok": { lat: 1.5909, lng: 99.2969, zoom: 12 },
+  "batang toru": { lat: 1.5057, lng: 99.0739, zoom: 12 },
+  "angkola barat": { lat: 1.4243, lng: 99.1787, zoom: 12 },
+  "angkola timur": { lat: 1.4749, lng: 99.3334, zoom: 12 },
+  "angkola selatan": { lat: 1.3535, lng: 99.2044, zoom: 12 },
+  "angkola sangkunur": { lat: 1.3826, lng: 99.0391, zoom: 12 },
+  "angkola muara tais": { lat: 1.2980, lng: 99.3198, zoom: 12 },
+  "sayur matinggi": { lat: 1.1500, lng: 99.3685, zoom: 12 },
+  "saipar dolok hole": { lat: 1.8021, lng: 99.3905, zoom: 12 },
+  "aek bilah": { lat: 1.9498, lng: 99.5079, zoom: 12 },
+  "arse": { lat: 1.7007, lng: 99.3281, zoom: 12 },
+  "marancar": { lat: 1.5156, lng: 99.1756, zoom: 12 },
+  "muara batang toru": { lat: 1.4288, lng: 98.9499, zoom: 12 },
+  "batang angkola": { lat: 1.2423, lng: 99.3128, zoom: 12 },
+  "tano tombangan angkola": { lat: 1.0561, lng: 99.3932, zoom: 12 },
+};
+
 const LeafletMapInner = ({
   pins,
   center,
@@ -99,11 +135,11 @@ const LeafletMapInner = ({
   const { MapContainer, TileLayer, Marker, Popup, useMap } = require("react-leaflet");
   const L = require("leaflet");
 
-  // Center update controller
+  // Center update controller with smooth flyTo animation
   function ChangeView({ center, zoom }: { center: [number, number]; zoom: number }) {
     const map = useMap();
     useEffect(() => {
-      map.setView(center, zoom);
+      map.flyTo(center, zoom, { duration: 0.8 });
     }, [center, zoom, map]);
     return null;
   }
@@ -153,6 +189,10 @@ const LeafletMapInner = ({
     <MapContainer
       center={center}
       zoom={zoom}
+      minZoom={TAPSEL_MIN_ZOOM}
+      maxZoom={TAPSEL_MAX_ZOOM}
+      maxBounds={TAPSEL_BOUNDS}
+      maxBoundsViscosity={1.0}
       scrollWheelZoom={false}
       style={{ height: "100%", width: "100%", zIndex: 10 }}
     >
@@ -306,7 +346,7 @@ export default function PotensiMap({
     return Array.from(desas).sort();
   }, [pins, selectedKecamatan]);
 
-  // Filtered Pins
+  // Filtered Pins berdasarkan kriteria filter
   const filteredPins = useMemo(() => {
     return pins.filter((p) => {
       const matchJenis =
@@ -323,9 +363,41 @@ export default function PotensiMap({
     });
   }, [pins, selectedJenis, selectedKecamatan, selectedDesa]);
 
-  // Center Tapanuli Selatan (Sipirok region)
-  const defaultCenter: [number, number] = [1.45, 99.25];
-  const defaultZoom = 10;
+  // Pastikan hanya pin dengan koordinat valid di dalam cakupan Tapanuli Selatan
+  const validPins = useMemo(() => {
+    return filteredPins.filter((p) => {
+      const lat = Number(p.lat);
+      const lng = Number(p.lng);
+      return (
+        !isNaN(lat) &&
+        !isNaN(lng) &&
+        lat >= 0.8 &&
+        lat <= 2.2 &&
+        lng >= 98.6 &&
+        lng <= 99.8
+      );
+    });
+  }, [filteredPins]);
+
+  // Menentukan Pusat & Level Zoom Dinamis (Default selalu Wilayah Tapanuli Selatan)
+  const { activeCenter, activeZoom } = useMemo(() => {
+    if (selectedKecamatan && selectedKecamatan !== "semua") {
+      const cleanKec = selectedKecamatan.toLowerCase().trim();
+      const kecPins = validPins.filter(
+        (p) => p.kecamatan?.toLowerCase().trim() === cleanKec
+      );
+      if (kecPins.length > 0) {
+        const avgLat = kecPins.reduce((acc, p) => acc + p.lat, 0) / kecPins.length;
+        const avgLng = kecPins.reduce((acc, p) => acc + p.lng, 0) / kecPins.length;
+        return { activeCenter: [avgLat, avgLng] as [number, number], activeZoom: 12 };
+      }
+      if (KECAMATAN_TAPSEL_COORDS[cleanKec]) {
+        const target = KECAMATAN_TAPSEL_COORDS[cleanKec];
+        return { activeCenter: [target.lat, target.lng] as [number, number], activeZoom: target.zoom };
+      }
+    }
+    return { activeCenter: TAPSEL_CENTER, activeZoom: TAPSEL_DEFAULT_ZOOM };
+  }, [selectedKecamatan, validPins]);
 
   const [selectedPhotoModal, setSelectedPhotoModal] = useState<{
     url: string;
@@ -341,16 +413,31 @@ export default function PotensiMap({
       <div className="p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
         <div>
           <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
-            Peta Sebaran Potensi & Usaha Tani
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse" />
+            Peta Sebaran Potensi & Usaha Tani Tapanuli Selatan
           </h3>
           <p className="text-xs text-slate-500">
-            Sebaran geospasial Kebun, Kolam, dan Peternakan Kabupaten Tapanuli Selatan
+            Fokus wilayah Kabupaten Tapanuli Selatan (15 Kecamatan) • {validPins.length} Titik Terdata
           </p>
         </div>
 
-        {/* Dropdown Filters */}
+        {/* Dropdown Filters & Quick Reset Button */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Tombol Reset Fokus Wilayah Tapsel */}
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedKecamatan("semua");
+              if (setSelectedDesa) setSelectedDesa("semua");
+              setSelectedJenis("semua");
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition shadow-2xs cursor-pointer"
+            title="Kembalikan peta ke fokus wilayah Kabupaten Tapanuli Selatan"
+          >
+            <Compass size={13} className="text-emerald-700" />
+            <span>Fokus Tapsel</span>
+          </button>
+
           {/* Filter Kecamatan */}
           <div className="relative">
             <select
@@ -408,15 +495,24 @@ export default function PotensiMap({
       <div className="relative flex-1 w-full overflow-hidden">
         {mounted && (
           <DynamicLeafletMap
-            pins={filteredPins}
-            center={defaultCenter}
-            zoom={defaultZoom}
+            pins={validPins}
+            center={activeCenter}
+            zoom={activeZoom}
             onSelectPhoto={setSelectedPhotoModal}
             onSelectDetail={setSelectedDetail}
           />
         )}
 
-        {/* Legend Box matching Mockup */}
+        {/* Status Badge Wilayah Tapsel di Pojok Kiri Bawah */}
+        <div className="absolute bottom-3 left-3 z-20 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-md border border-slate-200/90 text-[11px] font-semibold text-slate-700 flex items-center gap-2 pointer-events-none">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>
+            Wilayah: <strong>Kabupaten Tapanuli Selatan</strong>{" "}
+            {selectedKecamatan !== "semua" ? `• Kec. ${selectedKecamatan}` : "• 15 Kecamatan"}
+          </span>
+        </div>
+
+        {/* Legend Box */}
         <div className="absolute top-3 right-3 z-20 bg-white/95 backdrop-blur-md rounded-xl p-2.5 shadow-md border border-slate-200 text-xs font-medium space-y-1.5 pointer-events-auto">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-[#16a34a] border border-white shadow-2xs" />
