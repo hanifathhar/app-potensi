@@ -1,0 +1,636 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ======================================================
+// ENUMS
+// ======================================================
+
+enum PeranPengguna {
+  SUPERADMIN
+  ADMIN_KABUPATEN
+  ADMIN_KECAMATAN
+  ADMIN_DESA
+  PETUGAS
+  KELOMPOK_TANI
+}
+
+enum StatusData {
+  DRAFT
+  DIAJUKAN
+  DIVERIFIKASI
+  DITOLAK
+  AKTIF
+  NONAKTIF
+}
+
+enum JenisUsaha {
+  KEBUN
+  KOLAM
+  PETERNAKAN
+}
+
+enum StatusSiklus {
+  PERENCANAAN
+  BERJALAN
+  PANEN
+  GAGAL
+  DIBATALKAN
+}
+
+enum JenisSumberDana {
+  APBN
+  APBD_PROVINSI
+  APBD_KABUPATEN
+  DANA_DESA
+  BANTUAN_PEMERINTAH
+  CSR
+  SWADAYA
+  KUR
+  PERBANKAN
+  LAINNYA
+}
+
+enum StatusPendanaan {
+  RENCANA
+  DIAJUKAN
+  DISETUJUI
+  DICAIRKAN
+  SELESAI
+  DITOLAK
+}
+
+enum JenisFoto {
+  LOKASI
+  TANAMAN
+  KOLAM
+  TERNAK
+  PANEN
+  DOKUMEN
+  LAINNYA
+}
+
+// ======================================================
+// PENGGUNA
+// ======================================================
+
+model Pengguna {
+  id           String       @id @default(cuid())
+  nama         String
+  username     String       @unique
+  email        String?      @unique
+  passwordHash String
+  peran        PeranPengguna @default(PETUGAS)
+  aktif        Boolean      @default(true)
+
+  kd_kecamatan  String?
+  kd_desa       String?
+
+  kecamatan    Kecamatan?   @relation(fields: [kd_kecamatan], references: [kd_kecamatan], onDelete: Restrict)
+  desa         Desa?        @relation(fields: [kd_desa], references: [kd_desa], onDelete: Restrict)
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([peran, aktif])
+  @@index([kd_kecamatan])
+  @@index([kd_desa])
+}
+
+// ======================================================
+// WILAYAH KECAMATAN
+// ======================================================
+
+model Kecamatan {
+  id                String   @id @default(cuid())
+  kd_kecamatan      String   @unique
+  nm_kecamatan      String
+  aktif             Boolean  @default(true)
+
+  desa              Desa[]
+  pengguna          Pengguna[]
+  kelompokTani      KelompokTani[]
+  kebun             Kebun[]
+  kolam             Kolam[]
+  peternakan        Peternakan[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([nm_kecamatan])
+}
+
+// ======================================================
+// WILAYAH DESA / KELURAHAN
+// ======================================================
+
+model Desa {
+  id              String   @id @default(cuid())
+  kd_desa         String   @unique
+  nm_desa         String
+  kd_kecamatan    String
+  alamat          String?
+
+  latitude     Decimal? @db.Decimal(10, 7)
+  longitude    Decimal? @db.Decimal(10, 7)
+
+  aktif        Boolean  @default(true)
+
+  kecamatan    Kecamatan       @relation(fields: [kd_kecamatan], references: [kd_kecamatan], onDelete: Restrict)
+  kelompokTani KelompokTani[]
+  kebun        Kebun[]
+  kolam        Kolam[]
+  peternakan   Peternakan[]
+  pengguna     Pengguna[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([kd_desa, nm_desa])
+  @@index([kd_kecamatan])
+}
+
+// ======================================================
+// KELOMPOK TANI
+// ======================================================
+
+model KelompokTani {
+  id                String     @id @default(cuid())
+  kd_kelompok       String     @unique
+  nm_kelompok       String
+  
+  kd_kecamatan      String
+  kd_desa           String
+  namaKetua         String
+  noTelepon         String?
+  alamat            String?
+  jumlahAnggota     Int        @default(0)
+  tahunBerdiri      Int?
+  keterangan        String?
+
+  status            StatusData @default(DRAFT)
+
+  desa              Desa              @relation(fields: [kd_desa], references: [kd_desa], onDelete: Restrict)
+  kecamatan         Kecamatan         @relation(fields: [kd_kecamatan], references: [kd_kecamatan], onDelete: Restrict) 
+
+  anggota           AnggotaKelompok[]
+  kebun             Kebun[]
+  kolam             Kolam[]
+  peternakan        Peternakan[]
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([kd_desa, nm_kelompok])
+  @@index([kd_kecamatan, kd_desa, status])
+}
+
+// ======================================================
+// ANGGOTA KELOMPOK TANI
+// ======================================================
+
+model AnggotaKelompok {
+  id             String   @id @default(cuid())
+  kd_kelompok    String
+
+  nik            String?  @unique
+  nama           String
+  jenisKelamin   String?
+  noTelepon      String?
+  jabatan        String?
+  aktif          Boolean  @default(true)
+
+  kelompokTani   KelompokTani @relation(fields: [kd_kelompok], references: [kd_kelompok], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([kd_kelompok, aktif])
+}
+
+// ======================================================
+// MASTER KOMODITAS DINAMIS
+// ======================================================
+
+model Komoditas {
+  id            String     @id @default(cuid())
+  kd_komoditas  String     @unique
+  nm_komoditas  String
+  jenisUsaha    JenisUsaha
+
+  satuanDefault String?
+  deskripsi     String?
+  aktif         Boolean    @default(true)
+  urutan        Int        @default(0)
+
+  kebun         Kebun[]
+  kolam         Kolam[]
+  peternakan    Peternakan[]
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@unique([jenisUsaha, nm_komoditas])
+  @@index([jenisUsaha, aktif])
+  @@index([aktif, urutan])
+}
+
+// ======================================================
+// DATA KEBUN / PERTANIAN
+// ======================================================
+
+model Kebun {
+  id              String     @id @default(cuid())
+  kd_kebun        String     @unique
+  nama            String
+  status          StatusData @default(DRAFT)
+
+  kd_desa         String
+  kd_kecamatan    String
+  kd_kelompok     String?
+  kd_komoditas    String
+
+  namaPemilik     String?
+  alamatLokasi    String?
+
+  latitude        Decimal?   @db.Decimal(10, 7)
+  longitude       Decimal?   @db.Decimal(10, 7)
+
+  // Data lahan dan tanaman
+  jenisTanaman    String?
+  luasLahanHa     Decimal?   @db.Decimal(12, 4)
+  jumlahPohon     Int?
+  jarakTanam      String?
+  tahunTanam      Int?
+  sistemTanam     String?
+  kondisiTanaman  String?
+  statusLahan     String?
+
+  // Informasi usaha
+  tahunMulaiUsaha Int?
+  kondisiLokasi   String?
+  deskripsi       String?
+  catatan         String?
+
+  // Relasi
+  desa              Desa              @relation(fields: [kd_desa], references: [kd_desa], onDelete: Restrict)
+  kecamatan         Kecamatan         @relation(fields: [kd_kecamatan], references: [kd_kecamatan], onDelete: Restrict) 
+
+
+  kelompokTani    KelompokTani? @relation(fields: [kd_kelompok], references: [kd_kelompok], onDelete: SetNull)
+
+  komoditas       Komoditas     @relation(fields: [kd_komoditas], references: [kd_komoditas], onDelete: Restrict)
+
+  foto             FotoKebun[]
+  pendanaan        PendanaanKebun[]
+  siklus           SiklusProduksi[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([kd_desa, status])
+  @@index([kd_desa, kd_komoditas])
+  @@index([kd_kelompok])
+  @@index([kd_komoditas])
+  @@index([latitude, longitude])
+}
+
+// ======================================================
+// DATA KOLAM / PERIKANAN
+// ======================================================
+
+model Kolam {
+  id                  String     @id @default(cuid())
+  kd_kolam            String     @unique
+  nm_kolam            String
+  status              StatusData @default(DRAFT)
+
+  kd_desa             String
+  kd_kecamatan        String
+  kd_kelompok         String?
+  kd_komoditas        String
+
+  namaPemilik         String?
+  alamatLokasi        String?
+
+  latitude            Decimal?   @db.Decimal(10, 7)
+  longitude           Decimal?   @db.Decimal(10, 7)
+
+  // Data kolam
+  jenisKolam          String?
+  luasKolamM2         Decimal?   @db.Decimal(14, 2)
+  jumlahKolam         Int?
+  kedalamanKolamM    Decimal?   @db.Decimal(8, 2)
+  sumberAir           String?
+  sistemBudidaya      String?
+  kapasitasBenih      Decimal?   @db.Decimal(16, 2)
+  satuanBenih         String?
+  kondisiKolam        String?
+
+  // Informasi usaha
+  tahunMulaiUsaha     Int?
+  kondisiLokasi       String?
+  deskripsi           String?
+  catatan             String?
+
+  // Relasi
+  desa              Desa              @relation(fields: [kd_desa], references: [kd_desa], onDelete: Restrict)
+  kecamatan         Kecamatan         @relation(fields: [kd_kecamatan], references: [kd_kecamatan], onDelete: Restrict) 
+
+
+  kelompokTani    KelompokTani? @relation(fields: [kd_kelompok], references: [kd_kelompok], onDelete: SetNull)
+
+  komoditas       Komoditas     @relation(fields: [kd_komoditas], references: [kd_komoditas], onDelete: Restrict)
+
+
+  foto                FotoKolam[]
+  pendanaan           PendanaanKolam[]
+  siklus              SiklusProduksi[]
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([kd_desa, status])
+  @@index([kd_desa, kd_komoditas])
+  @@index([kd_kelompok])
+  @@index([kd_komoditas])
+  @@index([latitude, longitude])
+}
+
+// ======================================================
+// DATA PETERNAKAN
+// ======================================================
+
+model Peternakan {
+  id                  String     @id @default(cuid())
+  kd_peternakan       String     @unique
+  nm_peternakan       String
+  status              StatusData @default(DRAFT)
+
+  kd_desa             String
+  kd_kecamatan        String
+  kd_kelompok         String?
+  kd_komoditas        String
+
+  namaPemilik         String?
+  alamatLokasi        String?
+
+  latitude            Decimal?   @db.Decimal(10, 7)
+  longitude           Decimal?   @db.Decimal(10, 7)
+
+  // Data ternak dan kandang
+  jenisTernak         String?
+  jenisKandang        String?
+  jumlahKandang       Int?
+  jumlahTernak        Int?
+  satuanTernak        String?
+  kapasitasKandang    Int?
+  sistemPemeliharaan  String?
+  sumberPakan         String?
+  kondisiKandang      String?
+
+  // Informasi usaha
+  tahunMulaiUsaha     Int?
+  kondisiLokasi       String?
+  deskripsi           String?
+  catatan             String?
+  
+
+  // Relasi
+  desa              Desa              @relation(fields: [kd_desa], references: [kd_desa], onDelete: Restrict)
+  kecamatan         Kecamatan         @relation(fields: [kd_kecamatan], references: [kd_kecamatan], onDelete: Restrict) 
+
+
+  kelompokTani    KelompokTani? @relation(fields: [kd_kelompok], references: [kd_kelompok], onDelete: SetNull)
+
+  komoditas       Komoditas     @relation(fields: [kd_komoditas], references: [kd_komoditas], onDelete: Restrict)
+
+  foto                FotoPeternakan[]
+  pendanaan           PendanaanPeternakan[]
+  siklus              SiklusProduksi[]
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([kd_desa, status])
+  @@index([kd_desa, kd_komoditas])
+  @@index([kd_kelompok])
+  @@index([kd_komoditas])
+  @@index([latitude, longitude])
+}
+
+// ========================
+// FOTO USAHA / DOKUMENTASI
+// ========================
+
+model FotoPeternakan {
+  id             String    @id @default(cuid())
+  kd_peternakan   String
+  jenisFoto      JenisFoto @default(LOKASI)
+  judul          String?
+  url            String
+  namaFile       String?
+  keterangan     String?
+  tanggalFoto    DateTime?
+  latitude       Decimal?  @db.Decimal(10, 7)
+  longitude      Decimal?  @db.Decimal(10, 7)
+  utama          Boolean   @default(false)
+
+  peternakan     Peternakan @relation(fields: [kd_peternakan], references: [kd_peternakan], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+
+  @@index([kd_peternakan, jenisFoto])
+}
+
+model FotoKolam {
+  id             String    @id @default(cuid())
+  kd_kolam      String
+  jenisFoto      JenisFoto @default(LOKASI)
+  judul          String?
+  url            String
+  namaFile       String?
+  keterangan     String?
+  tanggalFoto    DateTime?
+  latitude       Decimal?  @db.Decimal(10, 7)
+  longitude      Decimal?  @db.Decimal(10, 7)
+  utama          Boolean   @default(false)
+
+  kolam          Kolam @relation(fields: [kd_kolam], references: [kd_kolam], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+
+  @@index([kd_kolam, jenisFoto])
+}
+
+model FotoKebun {
+  id             String    @id @default(cuid())  
+  kd_kebun       String
+  jenisFoto      JenisFoto @default(LOKASI)
+  judul          String?
+  url            String
+  namaFile       String?
+  keterangan     String?
+  tanggalFoto    DateTime?
+  latitude       Decimal?  @db.Decimal(10, 7)
+  longitude      Decimal?  @db.Decimal(10, 7)
+  utama          Boolean   @default(false)
+
+  kebun          Kebun @relation(fields: [kd_kebun], references: [kd_kebun], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+
+  @@index([kd_kebun, jenisFoto])
+}
+
+
+
+
+// ======================================================
+// PENDANAAN KHUSUS POTENSI KEBUN
+// Setiap kebun dapat memiliki beberapa catatan pendanaan
+// ======================================================
+
+model PendanaanKebun {
+  id                  String           @id @default(cuid())
+  kd_kebun            String
+  namaProgram         String?
+  sumberDana          JenisSumberDana
+  namaSumberDana      String?
+  tahunAnggaran       Int?
+  nomorUsulan         String?
+  tanggalPengajuan    DateTime?
+  tanggalPersetujuan  DateTime?
+  tanggalPencairan    DateTime?
+  danaDiajukan        Decimal          @default(0) @db.Decimal(18, 2)
+  danaDisetujui       Decimal?         @db.Decimal(18, 2)
+  danaDicairkan       Decimal?         @db.Decimal(18, 2)
+  status              StatusPendanaan  @default(RENCANA)
+  keterangan          String?
+  dokumenUrl          String?
+
+  kebun               Kebun            @relation(fields: [kd_kebun], references: [kd_kebun], onDelete: Cascade)
+
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  @@index([kd_kebun, status])
+  @@index([sumberDana, tahunAnggaran])
+}
+
+// ======================================================
+// PENDANAAN KHUSUS POTENSI KOLAM
+// Setiap kolam dapat memiliki beberapa catatan pendanaan
+// ======================================================
+
+model PendanaanKolam {
+  id                  String           @id @default(cuid())
+  kd_kolam            String
+  namaProgram         String?
+  sumberDana          JenisSumberDana
+  namaSumberDana      String?
+  tahunAnggaran       Int?
+  nomorUsulan         String?
+  tanggalPengajuan    DateTime?
+  tanggalPersetujuan  DateTime?
+  tanggalPencairan    DateTime?
+  danaDiajukan        Decimal          @default(0) @db.Decimal(18, 2)
+  danaDisetujui       Decimal?         @db.Decimal(18, 2)
+  danaDicairkan       Decimal?         @db.Decimal(18, 2)
+  status              StatusPendanaan  @default(RENCANA)
+  keterangan          String?
+  dokumenUrl          String?
+
+  kolam               Kolam            @relation(fields: [kd_kolam], references: [kd_kolam], onDelete: Cascade)
+
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  @@index([kd_kolam, status])
+  @@index([sumberDana, tahunAnggaran])
+}
+
+// ======================================================
+// PENDANAAN KHUSUS POTENSI PETERNAKAN
+// Setiap peternakan dapat memiliki beberapa catatan pendanaan
+// ======================================================
+
+model PendanaanPeternakan {
+  id                  String           @id @default(cuid())
+  kd_peternakan       String
+  namaProgram         String?
+  sumberDana          JenisSumberDana
+  namaSumberDana      String?
+  tahunAnggaran       Int?
+  nomorUsulan         String?
+  tanggalPengajuan    DateTime?
+  tanggalPersetujuan  DateTime?
+  tanggalPencairan    DateTime?
+  danaDiajukan        Decimal          @default(0) @db.Decimal(18, 2)
+  danaDisetujui       Decimal?         @db.Decimal(18, 2)
+  danaDicairkan       Decimal?         @db.Decimal(18, 2)
+  status              StatusPendanaan  @default(RENCANA)
+  keterangan          String?
+  dokumenUrl          String?
+
+  peternakan          Peternakan       @relation(fields: [kd_peternakan], references: [kd_peternakan], onDelete: Cascade)
+
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  @@index([kd_peternakan, status])
+  @@index([sumberDana, tahunAnggaran])
+}
+
+// ======================================================
+// SIKLUS PRODUKSI (JADWAL TANAM / TEBAR / PANEN)
+// ======================================================
+
+model SiklusProduksi {
+  id                    String        @id @default(cuid())
+  kd_siklus             String        @unique
+  jenisUsaha            JenisUsaha
+  namaSiklus            String
+  tahapKegiatan         String        // Contoh: "Olah Lahan", "Tanam", "Tebar Benih", "Pemeliharaan", "Panen", "Pemeriksaan"
+  
+  tanggalMulai          DateTime
+  tanggalTargetPanen    DateTime?
+  tanggalRealisasiPanen DateTime?
+  
+  estimasiProduksi      Decimal?      @db.Decimal(14, 2)
+  realisasiProduksi     Decimal?      @db.Decimal(14, 2)
+  satuanProduksi        String?       // kg, ton, ekor, liter
+  
+  biayaProduksi         Decimal?      @db.Decimal(18, 2)
+  pendapatan            Decimal?      @db.Decimal(18, 2)
+  
+  status                StatusSiklus  @default(BERJALAN)
+  catatan               String?
+  
+  // Relasi opsional ke unit usaha
+  kd_kebun              String?
+  kebun                 Kebun?        @relation(fields: [kd_kebun], references: [kd_kebun], onDelete: Cascade)
+  
+  kd_kolam              String?
+  kolam                 Kolam?        @relation(fields: [kd_kolam], references: [kd_kolam], onDelete: Cascade)
+  
+  kd_peternakan         String?
+  peternakan            Peternakan?   @relation(fields: [kd_peternakan], references: [kd_peternakan], onDelete: Cascade)
+  
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@index([jenisUsaha, status])
+  @@index([tanggalMulai, tanggalTargetPanen])
+  @@index([kd_kebun])
+  @@index([kd_kolam])
+  @@index([kd_peternakan])
+}
+

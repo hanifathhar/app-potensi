@@ -1,0 +1,151 @@
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log("Memulai migrasi transaksi lama ke jurnal (DetailTransaksi)...");
+
+  // Ambil semua transaksi yang belum punya DetailTransaksi
+  const transaksiList = await prisma.transaksi.findMany({
+    where: {
+      detail: { none: {} }
+    },
+    include: {
+      rekening: true,
+      rekeningTujuan: true,
+    }
+  });
+
+  console.log(`Ditemukan ${transaksiList.length} transaksi yang perlu dimigrasi.`);
+
+  let successCount = 0;
+  let skipCount = 0;
+  let errorCount = 0;
+
+  for (const trx of transaksiList) {
+    try {
+      const details = [];
+
+      const rekeningAkunId = trx.rekening?.akunId;
+      if (!rekeningAkunId) {
+        console.warn(`[SKIP] Transaksi ${trx.nomor} dilewati: Rekening Kas (ID: ${trx.rekeningId}) belum memiliki akunId.`);
+        skipCount++;
+        continue;
+      }
+
+      if (trx.jenis === "PENERIMAAN") {
+        if (!trx.akunId) {
+            console.warn(`[SKIP] Transaksi ${trx.nomor} dilewati: Tidak ada akunId pendapatan.`);
+            skipCount++;
+            continue;
+        }
+        details.push({
+          akunId: rekeningAkunId, // Kas (Debit)
+          uraian: trx.uraian,
+          debit: trx.total,
+          kredit: 0
+        });
+        details.push({
+          akunId: trx.akunId, // Pendapatan (Kredit)
+          uraian: trx.uraian,
+          debit: 0,
+          kredit: trx.total
+        });
+      } 
+      else if (trx.jenis === "PENGELUARAN") {
+        if (!trx.akunId) {
+            console.warn(`[SKIP] Transaksi ${trx.nomor} dilewati: Tidak ada akunId beban.`);
+            skipCount++;
+            continue;
+        }
+        details.push({
+          akunId: trx.akunId, // Beban (Debit)
+          uraian: trx.uraian,
+          debit: trx.total,
+          kredit: 0
+        });
+        details.push({
+          akunId: rekeningAkunId, // Kas (Kredit)
+          uraian: trx.uraian,
+          debit: 0,
+          kredit: trx.total
+        });
+      }
+      else if (trx.jenis === "PENYESUAIAN") {
+        if (!trx.akunId) {
+            console.warn(`[SKIP] Transaksi ${trx.nomor} dilewati: Tidak ada akunId penyesuaian.`);
+            skipCount++;
+            continue;
+        }
+        const isPlus = trx.metode === "PLUS"; // Asumsi dari kode sebelumnya
+        // Jika metode bukan PLUS/MINUS (karena data lama), kita bisa cek totalnya
+        let totalVal = Number(trx.total);
+        let actualIsPlus = isPlus || totalVal > 0;
+        
+        details.push({
+          akunId: actualIsPlus ? rekeningAkunId : trx.akunId, // Debit
+          uraian: trx.uraian,
+          debit: Math.abs(totalVal),
+          kredit: 0
+        });
+        details.push({
+          akunId: actualIsPlus ? trx.akunId : rekeningAkunId, // Kredit
+          uraian: trx.uraian,
+          debit: 0,
+          kredit: Math.abs(totalVal)
+        });
+      }
+      else if (trx.jenis === "TRANSFER") {
+        const rekeningTujuanAkunId = trx.rekeningTujuan?.akunId;
+        if (!rekeningTujuanAkunId) {
+          console.warn(`[SKIP] Transaksi ${trx.nomor} dilewati: Rekening Kas Tujuan (ID: ${trx.rekeningTujuanId}) belum memiliki akunId.`);
+          skipCount++;
+          continue;
+        }
+        details.push({
+          akunId: rekeningTujuanAkunId, // Kas Tujuan (Debit)
+          uraian: trx.uraian,
+          debit: trx.total,
+          kredit: 0
+        });
+        details.push({
+          akunId: rekeningAkunId, // Kas Asal (Kredit)
+          uraian: trx.uraian,
+          debit: 0,
+          kredit: trx.total
+        });
+      }
+
+      if (details.length > 0) {
+        await prisma.detailTransaksi.createMany({
+          data: details.map(d => ({
+            transaksiId: trx.id,
+            akunId: d.akunId,
+            uraian: d.uraian,
+            debit: d.debit,
+            kredit: d.kredit
+          }))
+        });
+        successCount++;
+      }
+      
+    } catch (error: any) {
+      console.error(`[ERROR] Gagal memigrasi transaksi ${trx.nomor}:`, error.message);
+      errorCount++;
+    }
+  }
+
+  console.log("=== Selesai ===");
+  console.log(`Berhasil: ${successCount}`);
+  console.log(`Dilewati: ${skipCount}`);
+  console.log(`Gagal: ${errorCount}`);
+}
+
+main()
+  .catch(e => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
