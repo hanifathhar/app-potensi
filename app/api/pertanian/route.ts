@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { StatusData } from "@prisma/client";
-import { getUserFromRequest, getAuthorityFilter, isAuthorizedForTerritory } from "@/lib/auth";
+import { getUserFromRequest, getAuthorityFilter, isAuthorizedForTerritory, canAccessSector } from "@/lib/auth";
 
 export async function GET(request: Request) {
   try {
+    const user = getUserFromRequest(request);
+    if (user && !canAccessSector(user, "pertanian")) {
+      return NextResponse.json(
+        { success: false, error: "Akses Ditolak: Admin Dinas Perikanan hanya dapat mengakses data perikanan." },
+        { status: 403 }
+      );
+    }
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
     const kd_kecamatan = searchParams.get("kd_kecamatan") || "";
@@ -15,7 +22,6 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
 
-    const user = getUserFromRequest(request);
     const authorityFilter = getAuthorityFilter(user, kd_kecamatan, kd_desa);
 
     const where: any = { ...authorityFilter };
@@ -63,6 +69,12 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = getUserFromRequest(request);
+    if (user && !canAccessSector(user, "pertanian")) {
+      return NextResponse.json(
+        { success: false, error: "Akses Ditolak: Admin Dinas Perikanan hanya dapat mengakses data perikanan." },
+        { status: 403 }
+      );
+    }
     const body = await request.json();
     const {
       kd_kebun,
@@ -148,6 +160,12 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const user = getUserFromRequest(request);
+    if (user && !canAccessSector(user, "pertanian")) {
+      return NextResponse.json(
+        { success: false, error: "Akses Ditolak: Admin Dinas Perikanan hanya dapat mengakses data perikanan." },
+        { status: 403 }
+      );
+    }
     const body = await request.json();
     const {
       id,
@@ -239,6 +257,12 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const user = getUserFromRequest(request);
+    if (user && !canAccessSector(user, "pertanian")) {
+      return NextResponse.json(
+        { success: false, error: "Akses Ditolak: Admin Dinas Perikanan hanya dapat mengakses data perikanan." },
+        { status: 403 }
+      );
+    }
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 

@@ -85,7 +85,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { nama, username, email, password, peran, kd_kecamatan, kd_desa, aktif } = body;
+    const { nama, username, email, password, peran, kd_kecamatan, kd_desa, kd_desa_list, aktif } = body;
 
     if (!nama || !username || !password || !peran) {
       return NextResponse.json(
@@ -105,6 +105,40 @@ export async function POST(request: Request) {
       );
     }
 
+    // Rule 3: Validasi penugasan desa untuk PPL (harus di dalam 1 kecamatan)
+    let finalDesaList: string[] = [];
+    if (Array.isArray(kd_desa_list)) {
+      finalDesaList = kd_desa_list.map((d: any) => String(d).trim()).filter(Boolean);
+    } else if (kd_desa && kd_desa.trim()) {
+      finalDesaList = [kd_desa.trim()];
+    }
+
+    if (peran === "PETUGAS") {
+      if (!kd_kecamatan || !kd_kecamatan.trim()) {
+        return NextResponse.json(
+          { success: false, error: "Petugas PPL wajib ditentukan wilayah kecamatannya." },
+          { status: 400 }
+        );
+      }
+      if (finalDesaList.length > 0) {
+        const invalidDesas = await prisma.desa.findMany({
+          where: {
+            kd_desa: { in: finalDesaList },
+            NOT: { kd_kecamatan: kd_kecamatan.trim() },
+          },
+        });
+        if (invalidDesas.length > 0) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Petugas PPL hanya boleh ditugaskan di desa-desa dalam satu kecamatan (${kd_kecamatan}).`,
+            },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     const passwordHash = await bcrypt.hash(password, 10);
 
     const created = await prisma.pengguna.create({
@@ -115,7 +149,8 @@ export async function POST(request: Request) {
         passwordHash,
         peran: peran as PeranPengguna,
         kd_kecamatan: kd_kecamatan && kd_kecamatan.trim().length > 0 ? kd_kecamatan.trim() : null,
-        kd_desa: kd_desa && kd_desa.trim().length > 0 ? kd_desa.trim() : null,
+        kd_desa: finalDesaList.length > 0 ? finalDesaList[0] : (kd_desa && kd_desa.trim().length > 0 ? kd_desa.trim() : null),
+        kd_desa_list: finalDesaList,
         aktif: aktif !== undefined ? Boolean(aktif) : true,
       },
     });
@@ -138,10 +173,44 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { id, nama, username, email, password, peran, kd_kecamatan, kd_desa, aktif } = body;
+    const { id, nama, username, email, password, peran, kd_kecamatan, kd_desa, kd_desa_list, aktif } = body;
 
     if (!id) {
       return NextResponse.json({ success: false, error: "ID Pengguna wajib diisi" }, { status: 400 });
+    }
+
+    // Rule 3: Validasi penugasan desa untuk PPL (harus di dalam 1 kecamatan)
+    let finalDesaList: string[] = [];
+    if (Array.isArray(kd_desa_list)) {
+      finalDesaList = kd_desa_list.map((d: any) => String(d).trim()).filter(Boolean);
+    } else if (kd_desa && kd_desa.trim()) {
+      finalDesaList = [kd_desa.trim()];
+    }
+
+    if (peran === "PETUGAS") {
+      if (!kd_kecamatan || !kd_kecamatan.trim()) {
+        return NextResponse.json(
+          { success: false, error: "Petugas PPL wajib ditentukan wilayah kecamatannya." },
+          { status: 400 }
+        );
+      }
+      if (finalDesaList.length > 0) {
+        const invalidDesas = await prisma.desa.findMany({
+          where: {
+            kd_desa: { in: finalDesaList },
+            NOT: { kd_kecamatan: kd_kecamatan.trim() },
+          },
+        });
+        if (invalidDesas.length > 0) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Petugas PPL hanya boleh ditugaskan di desa-desa dalam satu kecamatan (${kd_kecamatan}).`,
+            },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     const updateData: any = {
@@ -150,7 +219,8 @@ export async function PUT(request: Request) {
       email: email && email.trim().length > 0 ? email.trim() : null,
       peran: peran as PeranPengguna,
       kd_kecamatan: kd_kecamatan && kd_kecamatan.trim().length > 0 ? kd_kecamatan.trim() : null,
-      kd_desa: kd_desa && kd_desa.trim().length > 0 ? kd_desa.trim() : null,
+      kd_desa: finalDesaList.length > 0 ? finalDesaList[0] : (kd_desa && kd_desa.trim().length > 0 ? kd_desa.trim() : null),
+      kd_desa_list: finalDesaList,
       aktif: aktif !== undefined ? Boolean(aktif) : true,
     };
 

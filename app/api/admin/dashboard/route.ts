@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getUserFromRequest, getAuthorityFilter } from "@/lib/auth";
+import { getUserFromRequest, getAuthorityFilter, canAccessSector } from "@/lib/auth";
 
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const kd_kecamatan = url.searchParams.get("kd_kecamatan") || "semua";
     const user = getUserFromRequest(request);
+
+    const allowPertanian = canAccessSector(user, "pertanian");
+    const allowPerikanan = canAccessSector(user, "perikanan");
+    const allowPeternakan = canAccessSector(user, "peternakan");
 
     // 1. Terapkan filter wilayah berdasarkan hak akses pengguna
     const authorityFilter = getAuthorityFilter(user, kd_kecamatan);
@@ -21,6 +25,29 @@ export async function GET(request: Request) {
     const unitWhereTernak = authorityFilter.kd_kecamatan
       ? { peternakan: { kd_kecamatan: authorityFilter.kd_kecamatan } }
       : {};
+
+    const siklusOrConditions: any[] = [];
+    if (allowPertanian) {
+      siklusOrConditions.push(
+        authorityFilter.kd_kecamatan
+          ? { kebun: { kd_kecamatan: authorityFilter.kd_kecamatan } }
+          : { kebun: { isNot: null } }
+      );
+    }
+    if (allowPerikanan) {
+      siklusOrConditions.push(
+        authorityFilter.kd_kecamatan
+          ? { kolam: { kd_kecamatan: authorityFilter.kd_kecamatan } }
+          : { kolam: { isNot: null } }
+      );
+    }
+    if (allowPeternakan) {
+      siklusOrConditions.push(
+        authorityFilter.kd_kecamatan
+          ? { peternakan: { kd_kecamatan: authorityFilter.kd_kecamatan } }
+          : { peternakan: { isNot: null } }
+      );
+    }
 
     // 2. Query 100% Real Database
     const [
@@ -47,10 +74,10 @@ export async function GET(request: Request) {
       latestKolam,
       latestTernak,
     ] = await Promise.all([
-      prisma.kebun.count({ where: authorityFilter }),
-      prisma.kolam.count({ where: authorityFilter }),
-      prisma.peternakan.count({ where: authorityFilter }),
-      prisma.kelompokTani.count({ where: authorityFilter }),
+      allowPertanian ? prisma.kebun.count({ where: authorityFilter }) : Promise.resolve(0),
+      allowPerikanan ? prisma.kolam.count({ where: authorityFilter }) : Promise.resolve(0),
+      allowPeternakan ? prisma.peternakan.count({ where: authorityFilter }) : Promise.resolve(0),
+      allowPertanian ? prisma.kelompokTani.count({ where: authorityFilter }) : Promise.resolve(0),
       prisma.kecamatan.findMany({
         where: authorityFilter.kd_kecamatan ? { kd_kecamatan: authorityFilter.kd_kecamatan } : { aktif: true },
         include: {
@@ -65,137 +92,167 @@ export async function GET(request: Request) {
         },
         orderBy: { nm_kecamatan: "asc" },
       }),
-      prisma.siklusProduksi.findMany({
-        where: authorityFilter.kd_kecamatan
-          ? {
-              OR: [
-                { kebun: { kd_kecamatan: authorityFilter.kd_kecamatan } },
-                { kolam: { kd_kecamatan: authorityFilter.kd_kecamatan } },
-                { peternakan: { kd_kecamatan: authorityFilter.kd_kecamatan } },
-              ],
-            }
-          : undefined,
-        include: {
-          kebun: { include: { desa: true, kecamatan: true, komoditas: true } },
-          kolam: { include: { desa: true, kecamatan: true, komoditas: true } },
-          peternakan: { include: { desa: true, kecamatan: true, komoditas: true } },
-        },
-        orderBy: { tanggalMulai: "desc" },
-        take: 10,
-      }),
-      prisma.pendanaanKebun.findMany({
-        where: unitWhereKebun,
-        include: { kebun: { include: { desa: true, kecamatan: true } } },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.pendanaanKolam.findMany({
-        where: unitWhereKolam,
-        include: { kolam: { include: { desa: true, kecamatan: true } } },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.pendanaanPeternakan.findMany({
-        where: unitWhereTernak,
-        include: { peternakan: { include: { desa: true, kecamatan: true } } },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.kebun.findMany({
-        where: {
-          ...authorityFilter,
-          latitude: { not: null },
-          longitude: { not: null },
-        },
-        include: { desa: true, kecamatan: true, komoditas: true, kelompokTani: true, foto: true, pendanaan: true, siklus: true },
-      }),
-      prisma.kolam.findMany({
-        where: {
-          ...authorityFilter,
-          latitude: { not: null },
-          longitude: { not: null },
-        },
-        include: { desa: true, kecamatan: true, komoditas: true, kelompokTani: true, foto: true, pendanaan: true, siklus: true },
-      }),
-      prisma.peternakan.findMany({
-        where: {
-          ...authorityFilter,
-          latitude: { not: null },
-          longitude: { not: null },
-        },
-        include: { desa: true, kecamatan: true, komoditas: true, kelompokTani: true, foto: true, pendanaan: true, siklus: true },
-      }),
-      prisma.kebun.aggregate({
-        where: authorityFilter,
-        _sum: { luasLahanHa: true },
-      }),
-      prisma.kolam.aggregate({
-        where: authorityFilter,
-        _sum: { luasKolamM2: true, kapasitasBenih: true },
-      }),
-      prisma.peternakan.aggregate({
-        where: authorityFilter,
-        _sum: { jumlahTernak: true, jumlahKandang: true },
-      }),
-      prisma.kebun.groupBy({
-        by: ["kd_komoditas"],
-        where: authorityFilter,
-        _count: { id: true },
-      }),
-      prisma.kolam.groupBy({
-        by: ["kd_komoditas"],
-        where: authorityFilter,
-        _count: { id: true },
-      }),
-      prisma.peternakan.groupBy({
-        by: ["kd_komoditas"],
-        where: authorityFilter,
-        _count: { id: true },
-      }),
+      siklusOrConditions.length > 0
+        ? prisma.siklusProduksi.findMany({
+            where: { OR: siklusOrConditions },
+            include: {
+              kebun: { include: { desa: true, kecamatan: true, komoditas: true } },
+              kolam: { include: { desa: true, kecamatan: true, komoditas: true } },
+              peternakan: { include: { desa: true, kecamatan: true, komoditas: true } },
+            },
+            orderBy: { tanggalMulai: "desc" },
+            take: 10,
+          })
+        : Promise.resolve([]),
+      allowPertanian
+        ? prisma.pendanaanKebun.findMany({
+            where: unitWhereKebun,
+            include: { kebun: { include: { desa: true, kecamatan: true } } },
+            orderBy: { createdAt: "desc" },
+          })
+        : Promise.resolve([]),
+      allowPerikanan
+        ? prisma.pendanaanKolam.findMany({
+            where: unitWhereKolam,
+            include: { kolam: { include: { desa: true, kecamatan: true } } },
+            orderBy: { createdAt: "desc" },
+          })
+        : Promise.resolve([]),
+      allowPeternakan
+        ? prisma.pendanaanPeternakan.findMany({
+            where: unitWhereTernak,
+            include: { peternakan: { include: { desa: true, kecamatan: true } } },
+            orderBy: { createdAt: "desc" },
+          })
+        : Promise.resolve([]),
+      allowPertanian
+        ? prisma.kebun.findMany({
+            where: {
+              ...authorityFilter,
+              latitude: { not: null },
+              longitude: { not: null },
+            },
+            include: { desa: true, kecamatan: true, komoditas: true, kelompokTani: true, foto: true, pendanaan: true, siklus: true },
+          })
+        : Promise.resolve([]),
+      allowPerikanan
+        ? prisma.kolam.findMany({
+            where: {
+              ...authorityFilter,
+              latitude: { not: null },
+              longitude: { not: null },
+            },
+            include: { desa: true, kecamatan: true, komoditas: true, kelompokTani: true, foto: true, pendanaan: true, siklus: true },
+          })
+        : Promise.resolve([]),
+      allowPeternakan
+        ? prisma.peternakan.findMany({
+            where: {
+              ...authorityFilter,
+              latitude: { not: null },
+              longitude: { not: null },
+            },
+            include: { desa: true, kecamatan: true, komoditas: true, kelompokTani: true, foto: true, pendanaan: true, siklus: true },
+          })
+        : Promise.resolve([]),
+      allowPertanian
+        ? prisma.kebun.aggregate({
+            where: authorityFilter,
+            _sum: { luasLahanHa: true },
+          })
+        : Promise.resolve({ _sum: { luasLahanHa: null } }),
+      allowPerikanan
+        ? prisma.kolam.aggregate({
+            where: authorityFilter,
+            _sum: { luasKolamM2: true, kapasitasBenih: true },
+          })
+        : Promise.resolve({ _sum: { luasKolamM2: null, kapasitasBenih: null } }),
+      allowPeternakan
+        ? prisma.peternakan.aggregate({
+            where: authorityFilter,
+            _sum: { jumlahTernak: true, jumlahKandang: true },
+          })
+        : Promise.resolve({ _sum: { jumlahTernak: null, jumlahKandang: null } }),
+      allowPertanian
+        ? prisma.kebun.groupBy({
+            by: ["kd_komoditas"],
+            where: authorityFilter,
+            _count: { id: true },
+          })
+        : Promise.resolve([]),
+      allowPerikanan
+        ? prisma.kolam.groupBy({
+            by: ["kd_komoditas"],
+            where: authorityFilter,
+            _count: { id: true },
+          })
+        : Promise.resolve([]),
+      allowPeternakan
+        ? prisma.peternakan.groupBy({
+            by: ["kd_komoditas"],
+            where: authorityFilter,
+            _count: { id: true },
+          })
+        : Promise.resolve([]),
       prisma.komoditas.findMany({
         where: { aktif: true },
       }),
-      prisma.kebun.findFirst({
-        orderBy: { updatedAt: "desc" },
-        select: { updatedAt: true },
-      }),
-      prisma.kolam.findFirst({
-        orderBy: { updatedAt: "desc" },
-        select: { updatedAt: true },
-      }),
-      prisma.peternakan.findFirst({
-        orderBy: { updatedAt: "desc" },
-        select: { updatedAt: true },
-      }),
+      allowPertanian
+        ? prisma.kebun.findFirst({
+            orderBy: { updatedAt: "desc" },
+            select: { updatedAt: true },
+          })
+        : Promise.resolve(null),
+      allowPerikanan
+        ? prisma.kolam.findFirst({
+            orderBy: { updatedAt: "desc" },
+            select: { updatedAt: true },
+          })
+        : Promise.resolve(null),
+      allowPeternakan
+        ? prisma.peternakan.findFirst({
+            orderBy: { updatedAt: "desc" },
+            select: { updatedAt: true },
+          })
+        : Promise.resolve(null),
     ]);
 
 
     // 3. Kalkulasi Real Nilai Pendanaan dari Database
     const allPendanaan = [
-      ...danaKebunDb.map((d) => ({
-        id: `pk-${d.id}`,
-        program: d.namaProgram,
-        unit: d.kebun?.nama || "Kebun",
-        sumberDana: d.sumberDana,
-        pagu: Number(d.danaDiajukan || 0),
-        cair: Number(d.danaDicairkan || 0),
-        status: d.status,
-      })),
-      ...danaKolamDb.map((d) => ({
-        id: `pl-${d.id}`,
-        program: d.namaProgram,
-        unit: d.kolam?.nm_kolam || "Kolam",
-        sumberDana: d.sumberDana,
-        pagu: Number(d.danaDiajukan || 0),
-        cair: Number(d.danaDicairkan || 0),
-        status: d.status,
-      })),
-      ...danaTernakDb.map((d) => ({
-        id: `pt-${d.id}`,
-        program: d.namaProgram,
-        unit: d.peternakan?.nm_peternakan || "Peternakan",
-        sumberDana: d.sumberDana,
-        pagu: Number(d.danaDiajukan || 0),
-        cair: Number(d.danaDicairkan || 0),
-        status: d.status,
-      })),
+      ...(allowPertanian
+        ? danaKebunDb.map((d: any) => ({
+            id: `pk-${d.id}`,
+            program: d.namaProgram,
+            unit: d.kebun?.nama || "Kebun",
+            sumberDana: d.sumberDana,
+            pagu: Number(d.danaDiajukan || 0),
+            cair: Number(d.danaDicairkan || 0),
+            status: d.status,
+          }))
+        : []),
+      ...(allowPerikanan
+        ? danaKolamDb.map((d: any) => ({
+            id: `pl-${d.id}`,
+            program: d.namaProgram,
+            unit: d.kolam?.nm_kolam || "Kolam",
+            sumberDana: d.sumberDana,
+            pagu: Number(d.danaDiajukan || 0),
+            cair: Number(d.danaDicairkan || 0),
+            status: d.status,
+          }))
+        : []),
+      ...(allowPeternakan
+        ? danaTernakDb.map((d: any) => ({
+            id: `pt-${d.id}`,
+            program: d.namaProgram,
+            unit: d.peternakan?.nm_peternakan || "Peternakan",
+            sumberDana: d.sumberDana,
+            pagu: Number(d.danaDiajukan || 0),
+            cair: Number(d.danaDicairkan || 0),
+            status: d.status,
+          }))
+        : []),
     ];
 
     const sumPendanaanCair = allPendanaan.reduce((acc, curr) => acc + curr.cair, 0);
@@ -236,10 +293,10 @@ export async function GET(request: Request) {
     // 4. Bar Chart: 100% Mengambil data hitungan real per Kecamatan dari Database
     const chartData = allKecamatan.map((k) => ({
       nama: k.nm_kecamatan,
-      kebun: k._count.kebun,
-      kolam: k._count.kolam,
-      peternakan: k._count.peternakan,
-      poktan: k._count.kelompokTani,
+      kebun: allowPertanian ? k._count.kebun : 0,
+      kolam: allowPerikanan ? k._count.kolam : 0,
+      peternakan: allowPeternakan ? k._count.peternakan : 0,
+      poktan: allowPertanian ? k._count.kelompokTani : 0,
     }));
 
     // 5. Tabel Jadwal Panen & Siklus Produksi (Real DB)
@@ -470,32 +527,38 @@ export async function GET(request: Request) {
 
     // 8. Komposisi Sektor untuk Donut Chart
     const totalSektorData = totalKolam + totalKebun + totalPeternakan;
+    const komposisiItems: any[] = [];
+    if (allowPerikanan) {
+      komposisiItems.push({
+        name: "Kolam",
+        key: "kolam",
+        count: totalKolam,
+        percentage: totalSektorData > 0 ? Number(((totalKolam / totalSektorData) * 100).toFixed(2)) : 0,
+        color: "#0284c7",
+      });
+    }
+    if (allowPertanian) {
+      komposisiItems.push({
+        name: "Pertanian / Kebun",
+        key: "pertanian",
+        count: totalKebun,
+        percentage: totalSektorData > 0 ? Number(((totalKebun / totalSektorData) * 100).toFixed(2)) : 0,
+        color: "#16a34a",
+      });
+    }
+    if (allowPeternakan) {
+      komposisiItems.push({
+        name: "Peternakan",
+        key: "peternakan",
+        count: totalPeternakan,
+        percentage: totalSektorData > 0 ? Number(((totalPeternakan / totalSektorData) * 100).toFixed(2)) : 0,
+        color: "#ea580c",
+      });
+    }
     const komposisiData = {
       total: totalSektorData,
       displayTotal: totalSektorData.toLocaleString("id-ID"),
-      items: [
-        {
-          name: "Kolam",
-          key: "kolam",
-          count: totalKolam,
-          percentage: totalSektorData > 0 ? Number(((totalKolam / totalSektorData) * 100).toFixed(2)) : 0,
-          color: "#0284c7",
-        },
-        {
-          name: "Pertanian / Kebun",
-          key: "pertanian",
-          count: totalKebun,
-          percentage: totalSektorData > 0 ? Number(((totalKebun / totalSektorData) * 100).toFixed(2)) : 0,
-          color: "#16a34a",
-        },
-        {
-          name: "Peternakan",
-          key: "peternakan",
-          count: totalPeternakan,
-          percentage: totalSektorData > 0 ? Number(((totalPeternakan / totalSektorData) * 100).toFixed(2)) : 0,
-          color: "#ea580c",
-        },
-      ],
+      items: komposisiItems,
     };
 
     // 9. Detail Penjabaran Khusus Masing-masing Sektor

@@ -16,6 +16,8 @@ datasource db {
 enum PeranPengguna {
   SUPERADMIN
   ADMIN_KABUPATEN
+  ADMIN_PERTANIAN
+  ADMIN_PERIKANAN
   ADMIN_KECAMATAN
   ADMIN_DESA
   PETUGAS
@@ -92,6 +94,7 @@ model Pengguna {
 
   kd_kecamatan  String?
   kd_desa       String?
+  kd_desa_list  String[]     @default([])
 
   kecamatan    Kecamatan?   @relation(fields: [kd_kecamatan], references: [kd_kecamatan], onDelete: Restrict)
   desa         Desa?        @relation(fields: [kd_desa], references: [kd_desa], onDelete: Restrict)

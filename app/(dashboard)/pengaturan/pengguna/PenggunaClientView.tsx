@@ -12,6 +12,9 @@ import {
   ShieldCheck,
   CheckCircle,
   XCircle,
+  CheckSquare,
+  Square,
+  MapPin,
 } from "lucide-react";
 
 interface PenggunaItem {
@@ -22,6 +25,7 @@ interface PenggunaItem {
   peran: string;
   kd_kecamatan?: string;
   kd_desa?: string;
+  kd_desa_list?: string[];
   aktif: boolean;
   kecamatan?: { nm_kecamatan: string };
   desa?: { nm_desa: string };
@@ -66,10 +70,17 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
     peran: "PETUGAS",
     kd_kecamatan: "",
     kd_desa: "",
+    kd_desa_list: [] as string[],
     aktif: true,
   });
+  const [desaSearchModal, setDesaSearchModal] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const getDesaName = (kd_desa: string) => {
+    const found = desas.find((d) => d.kd_desa === kd_desa);
+    return found ? found.nm_desa : kd_desa;
+  };
 
   const fetchPengguna = async () => {
     setLoading(true);
@@ -102,8 +113,45 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
 
   const filterDesaOptions = desas.filter((d) => d.kd_kecamatan === selectedKec);
 
+  const availableDesas = desas.filter((d) => d.kd_kecamatan === formData.kd_kecamatan);
+
+  const handleToggleDesa = (kd_desa: string) => {
+    const current = formData.kd_desa_list || [];
+    const next = current.includes(kd_desa)
+      ? current.filter((k) => k !== kd_desa)
+      : [...current, kd_desa];
+    setFormData({
+      ...formData,
+      kd_desa_list: next,
+      kd_desa: next[0] || "",
+    });
+  };
+
+  const handleSelectAllDesas = () => {
+    const all = availableDesas.map((d) => d.kd_desa);
+    setFormData({
+      ...formData,
+      kd_desa_list: all,
+      kd_desa: all[0] || "",
+    });
+  };
+
+  const handleClearAllDesas = () => {
+    setFormData({
+      ...formData,
+      kd_desa_list: [],
+      kd_desa: "",
+    });
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (formData.peran === "PETUGAS" && !formData.kd_kecamatan) {
+      alert("Petugas PPL wajib memilih 1 kecamatan penugasan.");
+      return;
+    }
+
     setSaving(true);
     try {
       const url = "/api/pengaturan/pengguna";
@@ -111,6 +159,8 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
       const payload = {
         ...formData,
         id: editingItem?.id,
+        kd_desa_list: formData.peran === "PETUGAS" ? formData.kd_desa_list : (formData.kd_desa ? [formData.kd_desa] : []),
+        kd_desa: formData.peran === "PETUGAS" ? (formData.kd_desa_list[0] || null) : (formData.kd_desa || null),
       };
 
       const res = await fetch(url, {
@@ -151,7 +201,30 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
     }
   };
 
-  const availableDesas = desas.filter((d) => d.kd_kecamatan === formData.kd_kecamatan);
+  const getRoleBadge = (peran: string) => {
+    switch (peran) {
+      case "SUPERADMIN":
+        return <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold text-white bg-slate-900">SUPERADMIN</span>;
+      case "ADMIN_KABUPATEN":
+        return <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold text-white bg-emerald-800">ADMIN KABUPATEN</span>;
+      case "ADMIN_PERTANIAN":
+        return <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold text-white bg-green-600">ADMIN PERTANIAN</span>;
+      case "ADMIN_PERIKANAN":
+        return <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold text-white bg-sky-600">ADMIN PERIKANAN</span>;
+      case "ADMIN_KECAMATAN":
+        return <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold text-white bg-teal-700">ADMIN KECAMATAN</span>;
+      case "PETUGAS":
+        return <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold text-white bg-amber-600">PETUGAS PPL</span>;
+      case "KELOMPOK_TANI":
+        return <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold text-white bg-purple-700">KELOMPOK TANI</span>;
+      default:
+        return <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold text-white bg-slate-700">{peran}</span>;
+    }
+  };
+
+  const filteredModalDesas = availableDesas.filter((d) =>
+    d.nm_desa.toLowerCase().includes(desaSearchModal.toLowerCase())
+  );
 
   return (
     <div className="space-y-5">
@@ -220,6 +293,8 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
             <option value="semua">Semua Peran</option>
             <option value="SUPERADMIN">Superadmin</option>
             <option value="ADMIN_KABUPATEN">Admin Kabupaten</option>
+            <option value="ADMIN_PERTANIAN">Admin Dinas Pertanian</option>
+            <option value="ADMIN_PERIKANAN">Admin Dinas Perikanan</option>
             <option value="ADMIN_KECAMATAN">Admin Kecamatan</option>
             <option value="PETUGAS">Admin PPL / Petugas</option>
             <option value="KELOMPOK_TANI">Operator Kelompok Tani</option>
@@ -237,11 +312,13 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                 peran: "PETUGAS",
                 kd_kecamatan: kecamatans[0]?.kd_kecamatan || "",
                 kd_desa: "",
+                kd_desa_list: [],
                 aktif: true,
               });
+              setDesaSearchModal("");
               setIsModalOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#16a34a] hover:bg-[#15803d] text-white rounded-xl text-xs font-bold transition shadow-sm"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#16a34a] hover:bg-[#15803d] text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
           >
             <Plus size={16} />
             Tambah Pengguna
@@ -284,16 +361,29 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                       <p className="text-[10px] text-slate-400 font-mono">@{u.username}</p>
                     </td>
                     <td className="p-4">
-                      <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold text-white bg-[#0a261c]">
-                        {u.peran}
-                      </span>
+                      {getRoleBadge(u.peran)}
                     </td>
-                    <td className="p-4">
+                    <td className="p-4 max-w-xs">
                       {u.kecamatan ? (
-                        <p className="font-semibold text-slate-800">
-                          Kec. {u.kecamatan.nm_kecamatan}
-                          {u.desa ? ` / Desa ${u.desa.nm_desa}` : ""}
-                        </p>
+                        <div>
+                          <p className="font-semibold text-slate-800">
+                            Kec. {u.kecamatan.nm_kecamatan}
+                          </p>
+                          {u.peran === "PETUGAS" && u.kd_desa_list && u.kd_desa_list.length > 0 ? (
+                            <div className="mt-1">
+                              <span className="inline-block text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 mb-1">
+                                {u.kd_desa_list.length} Desa Penugasan:
+                              </span>
+                              <p className="text-[11px] text-slate-600 line-clamp-2 leading-relaxed">
+                                {u.kd_desa_list.map((kd) => getDesaName(kd)).join(", ")}
+                              </p>
+                            </div>
+                          ) : u.desa ? (
+                            <p className="text-[11px] text-slate-600">Desa {u.desa.nm_desa}</p>
+                          ) : (
+                            <p className="text-[11px] text-slate-400 italic">Seluruh Desa di Kecamatan</p>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-slate-400 italic">Semua Wilayah (Kabupaten)</span>
                       )}
@@ -324,11 +414,18 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                               peran: u.peran,
                               kd_kecamatan: u.kd_kecamatan || "",
                               kd_desa: u.kd_desa || "",
+                              kd_desa_list:
+                                u.kd_desa_list && u.kd_desa_list.length > 0
+                                  ? u.kd_desa_list
+                                  : u.kd_desa
+                                    ? [u.kd_desa]
+                                    : [],
                               aktif: u.aktif,
                             });
+                            setDesaSearchModal("");
                             setIsModalOpen(true);
                           }}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
                           title="Edit"
                         >
                           <Edit2 size={15} />
@@ -336,7 +433,7 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                         <button
                           disabled={u.username === "admin"}
                           onClick={() => setDeleteId(u.id)}
-                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition disabled:opacity-20 disabled:cursor-not-allowed"
+                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"
                           title="Hapus"
                         >
                           <Trash2 size={15} />
@@ -381,14 +478,14 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
       {/* Modal Pengguna */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-lg rounded-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white w-full max-w-xl rounded-2xl p-6 shadow-xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
               <h3 className="text-base font-extrabold text-slate-900">
                 {modalMode === "create" ? "Tambah Akun Pengguna Baru" : "Edit Akun Pengguna"}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-lg font-bold"
+                className="text-slate-400 hover:text-slate-600 text-lg font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -439,12 +536,21 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                   <label className="block font-bold text-slate-700 mb-1">Peran / Hak Akses (RBAC)</label>
                   <select
                     value={formData.peran}
-                    onChange={(e) => setFormData({ ...formData, peran: e.target.value })}
+                    onChange={(e) => {
+                      const nextPeran = e.target.value;
+                      setFormData({
+                        ...formData,
+                        peran: nextPeran,
+                        kd_desa_list: nextPeran === "PETUGAS" ? formData.kd_desa_list : [],
+                      });
+                    }}
                     className="w-full px-3 py-2 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-[#16a34a] font-bold"
                   >
-                    <option value="ADMIN_KABUPATEN">Admin Kabupaten (Semua Data)</option>
-                    <option value="ADMIN_KECAMATAN">Admin Kecamatan (Sesuai Wilayah)</option>
-                    <option value="PETUGAS">Admin PPL / Penyuluh (Sesuai Wilayah)</option>
+                    <option value="ADMIN_KABUPATEN">Admin Kabupaten</option>
+                    <option value="ADMIN_PERTANIAN">Admin Dinas Pertanian</option>
+                    <option value="ADMIN_PERIKANAN">Admin Dinas Perikanan</option>
+                    <option value="ADMIN_KECAMATAN">Admin Kecamatan</option>
+                    <option value="PETUGAS">Petugas PPL</option>
                     <option value="KELOMPOK_TANI">Operator Kelompok Tani</option>
                   </select>
                 </div>
@@ -463,17 +569,35 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* Wilayah Penugasan */}
+              <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-3">
+                <div className="flex items-center gap-1.5 text-slate-800 font-bold">
+                  <MapPin size={15} className="text-[#16a34a]" />
+                  <span>Wilayah Penugasan & Otoritas</span>
+                </div>
+
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Wilayah Kecamatan</label>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Kecamatan {formData.peran === "PETUGAS" ? <span className="text-red-500">* (Wajib 1 Kecamatan)</span> : "(Opsional)"}
+                  </label>
                   <select
+                    required={formData.peran === "PETUGAS"}
                     value={formData.kd_kecamatan}
                     onChange={(e) =>
-                      setFormData({ ...formData, kd_kecamatan: e.target.value, kd_desa: "" })
+                      setFormData({
+                        ...formData,
+                        kd_kecamatan: e.target.value,
+                        kd_desa: "",
+                        kd_desa_list: [], // Reset desa list on kecamatan change
+                      })
                     }
-                    className="w-full px-3 py-2 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-[#16a34a]"
+                    className="w-full px-3 py-2 border rounded-xl bg-white focus:ring-2 focus:ring-[#16a34a]"
                   >
-                    <option value="">-- Semua / Tingkat Kabupaten --</option>
+                    <option value="">
+                      {formData.peran === "PETUGAS"
+                        ? "-- Pilih Kecamatan Penugasan PPL --"
+                        : "-- Semua / Tingkat Kabupaten --"}
+                    </option>
                     {kecamatans.map((kec) => (
                       <option key={kec.kd_kecamatan} value={kec.kd_kecamatan}>
                         {kec.nm_kecamatan}
@@ -482,21 +606,101 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Wilayah Desa</label>
-                  <select
-                    value={formData.kd_desa}
-                    onChange={(e) => setFormData({ ...formData, kd_desa: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-[#16a34a]"
-                  >
-                    <option value="">-- Semua / Seluruh Desa --</option>
-                    {availableDesas.map((desa) => (
-                      <option key={desa.kd_desa} value={desa.kd_desa}>
-                        {desa.nm_desa}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {/* Multi-desa untuk Petugas PPL */}
+                {formData.peran === "PETUGAS" ? (
+                  <div className="space-y-2 pt-1">
+                    <div className="flex items-center justify-between">
+                      <label className="font-bold text-slate-700">
+                        Pilih Desa Penugasan PPL:
+                        <span className="ml-1 text-[#16a34a]">
+                          ({formData.kd_desa_list.length} desa dipilih)
+                        </span>
+                      </label>
+                      {availableDesas.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleSelectAllDesas}
+                            className="text-[10px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                          >
+                            Pilih Semua ({availableDesas.length})
+                          </button>
+                          <span className="text-slate-300">|</span>
+                          <button
+                            type="button"
+                            onClick={handleClearAllDesas}
+                            className="text-[10px] font-bold text-slate-500 hover:underline cursor-pointer"
+                          >
+                            Batal Semua
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {!formData.kd_kecamatan ? (
+                      <p className="text-xs text-slate-400 italic bg-white p-3 rounded-xl border border-slate-200">
+                        Silakan pilih Kecamatan terlebih dahulu untuk memunculkan daftar desa.
+                      </p>
+                    ) : availableDesas.length === 0 ? (
+                      <p className="text-xs text-slate-400 italic bg-white p-3 rounded-xl border border-slate-200">
+                        Tidak ada desa terdaftar pada kecamatan ini.
+                      </p>
+                    ) : (
+                      <div className="bg-white rounded-xl border border-slate-200 p-2.5 space-y-2">
+                        {availableDesas.length > 6 && (
+                          <input
+                            type="text"
+                            placeholder="Cari desa penugasan..."
+                            value={desaSearchModal}
+                            onChange={(e) => setDesaSearchModal(e.target.value)}
+                            className="w-full px-2.5 py-1.5 text-[11px] border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-slate-50/50"
+                          />
+                        )}
+                        <div className="max-h-44 overflow-y-auto space-y-1 pr-1 divide-y divide-slate-100">
+                          {filteredModalDesas.map((desa) => {
+                            const isChecked = formData.kd_desa_list.includes(desa.kd_desa);
+                            return (
+                              <label
+                                key={desa.kd_desa}
+                                onClick={() => handleToggleDesa(desa.kd_desa)}
+                                className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition select-none ${isChecked
+                                    ? "bg-emerald-50/80 text-emerald-900 font-semibold"
+                                    : "hover:bg-slate-50 text-slate-700"
+                                  }`}
+                              >
+                                <span className="text-xs">{desa.nm_desa}</span>
+                                {isChecked ? (
+                                  <CheckSquare size={16} className="text-emerald-600 shrink-0" />
+                                ) : (
+                                  <Square size={16} className="text-slate-300 shrink-0" />
+                                )}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-[10px] text-slate-500 italic">
+                      * Sesuai ketentuan, Petugas PPL dapat ditugaskan di banyak desa, namun hanya di dalam satu kecamatan yang sama.
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Wilayah Desa</label>
+                    <select
+                      value={formData.kd_desa}
+                      onChange={(e) => setFormData({ ...formData, kd_desa: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-xl bg-white focus:ring-2 focus:ring-[#16a34a]"
+                    >
+                      <option value="">-- Semua / Seluruh Desa --</option>
+                      {availableDesas.map((desa) => (
+                        <option key={desa.kd_desa} value={desa.kd_desa}>
+                          {desa.nm_desa}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -514,14 +718,14 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50 font-bold"
+                  className="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50 font-bold cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2 bg-[#16a34a] hover:bg-[#15803d] text-white rounded-xl font-bold transition shadow-sm disabled:opacity-50"
+                  className="px-5 py-2 bg-[#16a34a] hover:bg-[#15803d] text-white rounded-xl font-bold transition shadow-sm disabled:opacity-50 cursor-pointer"
                 >
                   {saving ? "Menyimpan..." : "Simpan Pengguna"}
                 </button>
@@ -547,13 +751,13 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
             <div className="flex gap-2 justify-center pt-2">
               <button
                 onClick={() => setDeleteId(null)}
-                className="px-4 py-2 border rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50"
+                className="px-4 py-2 border rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
               >
                 Batal
               </button>
               <button
                 onClick={handleDelete}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition"
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
               >
                 Ya, Hapus
               </button>

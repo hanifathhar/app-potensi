@@ -87,6 +87,26 @@ export default function DashboardTaniTapselPage() {
     fetchData();
   }, []);
 
+  const currentUser = data?.currentUser;
+  const isPertanianAdmin = currentUser?.peran === "ADMIN_PERTANIAN";
+  const isPerikananAdmin = currentUser?.peran === "ADMIN_PERIKANAN";
+
+  useEffect(() => {
+    if (isPerikananAdmin) {
+      setActiveSectorFilter("kolam");
+      if (activeTab === "pertanian" || activeTab === "peternakan") {
+        setActiveTab("perikanan");
+      }
+    } else if (isPertanianAdmin) {
+      if (activeSectorFilter === "kolam") {
+        setActiveSectorFilter("pertanian");
+      }
+      if (activeTab === "perikanan") {
+        setActiveTab("pertanian");
+      }
+    }
+  }, [isPerikananAdmin, isPertanianAdmin]);
+
   const metrics = data?.metrics || {
     displayKebun: "0",
     growthKebun: "Memuat unit kebun...",
@@ -256,47 +276,53 @@ export default function DashboardTaniTapselPage() {
             <span>Ringkasan Utama</span>
           </button>
 
-          <button
-            onClick={() => setActiveTab("pertanian")}
-            className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === "pertanian"
-              ? "bg-emerald-700 text-white shadow-sm ring-2 ring-emerald-700/20"
-              : "text-slate-600 hover:text-emerald-700 hover:bg-emerald-50"
-              }`}
-          >
-            <Sprout size={16} />
-            <span>Dashboard Pertanian</span>
-            <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-extrabold">
-              {metrics.displayKebun}
-            </span>
-          </button>
+          {!isPerikananAdmin && (
+            <button
+              onClick={() => setActiveTab("pertanian")}
+              className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === "pertanian"
+                ? "bg-emerald-700 text-white shadow-sm ring-2 ring-emerald-700/20"
+                : "text-slate-600 hover:text-emerald-700 hover:bg-emerald-50"
+                }`}
+            >
+              <Sprout size={16} />
+              <span>Dashboard Pertanian</span>
+              <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-extrabold">
+                {metrics.displayKebun}
+              </span>
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveTab("perikanan")}
-            className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === "perikanan"
-              ? "bg-sky-600 text-white shadow-sm ring-2 ring-sky-600/20"
-              : "text-slate-600 hover:text-sky-700 hover:bg-sky-50"
-              }`}
-          >
-            <Fish size={16} />
-            <span>Dashboard Kolam / Perikanan</span>
-            <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-extrabold">
-              {metrics.displayKolam}
-            </span>
-          </button>
+          {!isPertanianAdmin && (
+            <button
+              onClick={() => setActiveTab("perikanan")}
+              className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === "perikanan"
+                ? "bg-sky-600 text-white shadow-sm ring-2 ring-sky-600/20"
+                : "text-slate-600 hover:text-sky-700 hover:bg-sky-50"
+                }`}
+            >
+              <Fish size={16} />
+              <span>Dashboard Kolam / Perikanan</span>
+              <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-extrabold">
+                {metrics.displayKolam}
+              </span>
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveTab("peternakan")}
-            className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === "peternakan"
-              ? "bg-orange-600 text-white shadow-sm ring-2 ring-orange-600/20"
-              : "text-slate-600 hover:text-orange-700 hover:bg-orange-50"
-              }`}
-          >
-            <Beef size={16} />
-            <span>Dashboard Peternakan</span>
-            <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-extrabold">
-              {metrics.displayPeternakan}
-            </span>
-          </button>
+          {!isPerikananAdmin && (
+            <button
+              onClick={() => setActiveTab("peternakan")}
+              className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === "peternakan"
+                ? "bg-orange-600 text-white shadow-sm ring-2 ring-orange-600/20"
+                : "text-slate-600 hover:text-orange-700 hover:bg-orange-50"
+                }`}
+            >
+              <Beef size={16} />
+              <span>Dashboard Peternakan</span>
+              <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-extrabold">
+                {metrics.displayPeternakan}
+              </span>
+            </button>
+          )}
         </div>
 
         <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-500 pr-2">
@@ -313,105 +339,113 @@ export default function DashboardTaniTapselPage() {
       ======================================================== */}
       {activeTab === "ringkasan" && (
         <div className="space-y-6">
-          {/* A. 5 KARTU METRIK UTAMA */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+          {/* A. KARTU METRIK UTAMA */}
+          <div className={`grid grid-cols-1 sm:grid-cols-2 ${isPerikananAdmin ? "lg:grid-cols-2" : isPertanianAdmin ? "lg:grid-cols-4" : "lg:grid-cols-5"} gap-3.5`}>
             {/* Card 1: Kebun */}
-            <div
-              onClick={() => setActiveTab("pertanian")}
-              className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer group"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-slate-500">Total Kebun</span>
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Sprout size={20} />
+            {!isPerikananAdmin && (
+              <div
+                onClick={() => setActiveTab("pertanian")}
+                className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer group"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold text-slate-500">Total Kebun</span>
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Sprout size={20} />
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                    {metrics.displayKebun}
+                  </span>
+                  <span className="text-[11px] font-medium text-slate-500">unit usaha</span>
+                </div>
+                <div className="mt-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50/80 px-2 py-0.5 rounded-md w-fit">
+                    <TrendingUp size={12} />
+                    <span>{metrics.growthKebun}</span>
+                  </div>
+                  <ChevronRight size={14} className="text-slate-400 group-hover:text-emerald-600 transition" />
                 </div>
               </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                  {metrics.displayKebun}
-                </span>
-                <span className="text-[11px] font-medium text-slate-500">unit usaha</span>
-              </div>
-              <div className="mt-2.5 flex items-center justify-between">
-                <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50/80 px-2 py-0.5 rounded-md w-fit">
-                  <TrendingUp size={12} />
-                  <span>{metrics.growthKebun}</span>
-                </div>
-                <ChevronRight size={14} className="text-slate-400 group-hover:text-emerald-600 transition" />
-              </div>
-            </div>
+            )}
 
             {/* Card 2: Kolam Ikan */}
-            <div
-              onClick={() => setActiveTab("perikanan")}
-              className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-sky-300 transition-all cursor-pointer group"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-slate-500">Total Kolam Ikan</span>
-                <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Fish size={20} />
+            {!isPertanianAdmin && (
+              <div
+                onClick={() => setActiveTab("perikanan")}
+                className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-sky-300 transition-all cursor-pointer group"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold text-slate-500">Total Kolam Ikan</span>
+                  <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Fish size={20} />
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                    {metrics.displayKolam}
+                  </span>
+                  <span className="text-[11px] font-medium text-slate-500">unit usaha</span>
+                </div>
+                <div className="mt-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-1 text-[11px] font-bold text-sky-700 bg-sky-50/80 px-2 py-0.5 rounded-md w-fit">
+                    <TrendingUp size={12} />
+                    <span>{metrics.growthKolam}</span>
+                  </div>
+                  <ChevronRight size={14} className="text-slate-400 group-hover:text-sky-600 transition" />
                 </div>
               </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                  {metrics.displayKolam}
-                </span>
-                <span className="text-[11px] font-medium text-slate-500">unit usaha</span>
-              </div>
-              <div className="mt-2.5 flex items-center justify-between">
-                <div className="flex items-center gap-1 text-[11px] font-bold text-sky-700 bg-sky-50/80 px-2 py-0.5 rounded-md w-fit">
-                  <TrendingUp size={12} />
-                  <span>{metrics.growthKolam}</span>
-                </div>
-                <ChevronRight size={14} className="text-slate-400 group-hover:text-sky-600 transition" />
-              </div>
-            </div>
+            )}
 
             {/* Card 3: Peternakan */}
-            <div
-              onClick={() => setActiveTab("peternakan")}
-              className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-orange-300 transition-all cursor-pointer group"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-slate-500">Total Peternakan</span>
-                <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Beef size={20} />
+            {!isPerikananAdmin && (
+              <div
+                onClick={() => setActiveTab("peternakan")}
+                className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-orange-300 transition-all cursor-pointer group"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold text-slate-500">Total Peternakan</span>
+                  <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Beef size={20} />
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                    {metrics.displayPeternakan}
+                  </span>
+                  <span className="text-[11px] font-medium text-slate-500">unit usaha</span>
+                </div>
+                <div className="mt-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-1 text-[11px] font-bold text-orange-700 bg-orange-50/80 px-2 py-0.5 rounded-md w-fit">
+                    <TrendingUp size={12} />
+                    <span>{metrics.growthPeternakan}</span>
+                  </div>
+                  <ChevronRight size={14} className="text-slate-400 group-hover:text-orange-600 transition" />
                 </div>
               </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                  {metrics.displayPeternakan}
-                </span>
-                <span className="text-[11px] font-medium text-slate-500">unit usaha</span>
-              </div>
-              <div className="mt-2.5 flex items-center justify-between">
-                <div className="flex items-center gap-1 text-[11px] font-bold text-orange-700 bg-orange-50/80 px-2 py-0.5 rounded-md w-fit">
-                  <TrendingUp size={12} />
-                  <span>{metrics.growthPeternakan}</span>
-                </div>
-                <ChevronRight size={14} className="text-slate-400 group-hover:text-orange-600 transition" />
-              </div>
-            </div>
+            )}
 
             {/* Card 4: Kelompok Tani */}
-            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md transition-all group">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-slate-500">Kelompok Tani</span>
-                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Users size={20} />
+            {!isPerikananAdmin && (
+              <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md transition-all group">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold text-slate-500">Kelompok Tani</span>
+                  <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Users size={20} />
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                    {metrics.displayKelompokTani}
+                  </span>
+                  <span className="text-[11px] font-medium text-slate-500">kelompok</span>
+                </div>
+                <div className="mt-2.5 flex items-center gap-1 text-[11px] font-bold text-purple-700 bg-purple-50/80 px-2 py-0.5 rounded-md w-fit">
+                  <TrendingUp size={12} />
+                  <span>{metrics.growthKelompokTani}</span>
                 </div>
               </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                  {metrics.displayKelompokTani}
-                </span>
-                <span className="text-[11px] font-medium text-slate-500">kelompok</span>
-              </div>
-              <div className="mt-2.5 flex items-center gap-1 text-[11px] font-bold text-purple-700 bg-purple-50/80 px-2 py-0.5 rounded-md w-fit">
-                <TrendingUp size={12} />
-                <span>{metrics.growthKelompokTani}</span>
-              </div>
-            </div>
+            )}
 
             {/* Card 5: Pendanaan */}
             <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md transition-all group">
@@ -452,33 +486,39 @@ export default function DashboardTaniTapselPage() {
 
                   {/* Filter Pills Kolam | Pertanian | Peternakan */}
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setActiveSectorFilter("kolam")}
-                      className={`px-3 py-1.5 rounded-xl text-xs transition border cursor-pointer ${activeSectorFilter === "kolam"
-                        ? sectorColors.kolam.pillActive
-                        : sectorColors.kolam.pillInactive
-                        }`}
-                    >
-                      Kolam
-                    </button>
-                    <button
-                      onClick={() => setActiveSectorFilter("pertanian")}
-                      className={`px-3 py-1.5 rounded-xl text-xs transition border cursor-pointer ${activeSectorFilter === "pertanian"
-                        ? sectorColors.pertanian.pillActive
-                        : sectorColors.pertanian.pillInactive
-                        }`}
-                    >
-                      Pertanian
-                    </button>
-                    <button
-                      onClick={() => setActiveSectorFilter("peternakan")}
-                      className={`px-3 py-1.5 rounded-xl text-xs transition border cursor-pointer ${activeSectorFilter === "peternakan"
-                        ? sectorColors.peternakan.pillActive
-                        : sectorColors.peternakan.pillInactive
-                        }`}
-                    >
-                      Peternakan
-                    </button>
+                    {!isPertanianAdmin && (
+                      <button
+                        onClick={() => setActiveSectorFilter("kolam")}
+                        className={`px-3 py-1.5 rounded-xl text-xs transition border cursor-pointer ${activeSectorFilter === "kolam"
+                          ? sectorColors.kolam.pillActive
+                          : sectorColors.kolam.pillInactive
+                          }`}
+                      >
+                        Kolam
+                      </button>
+                    )}
+                    {!isPerikananAdmin && (
+                      <button
+                        onClick={() => setActiveSectorFilter("pertanian")}
+                        className={`px-3 py-1.5 rounded-xl text-xs transition border cursor-pointer ${activeSectorFilter === "pertanian"
+                          ? sectorColors.pertanian.pillActive
+                          : sectorColors.pertanian.pillInactive
+                          }`}
+                      >
+                        Pertanian
+                      </button>
+                    )}
+                    {!isPerikananAdmin && (
+                      <button
+                        onClick={() => setActiveSectorFilter("peternakan")}
+                        className={`px-3 py-1.5 rounded-xl text-xs transition border cursor-pointer ${activeSectorFilter === "peternakan"
+                          ? sectorColors.peternakan.pillActive
+                          : sectorColors.peternakan.pillInactive
+                          }`}
+                      >
+                        Peternakan
+                      </button>
+                    )}
                   </div>
                 </div>
 

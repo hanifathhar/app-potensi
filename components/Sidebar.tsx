@@ -115,20 +115,32 @@ export default function Sidebar({
       icon: <Sprout size={14} />,
       href: "/pertanian",
       color: "text-emerald-400",
+      sector: "pertanian",
     },
     {
       title: "Usaha Perikanan",
       icon: <Fish size={14} />,
       href: "/perikanan",
       color: "text-cyan-400",
+      sector: "perikanan",
     },
     {
       title: "Usaha Peternakan",
       icon: <Beef size={14} />,
       href: "/peternakan",
       color: "text-amber-400",
+      sector: "peternakan",
     },
   ];
+
+  // Rule 1 & 2: Filter menu sesuai peran Dinas Pertanian vs Perikanan
+  const filteredPotensiItems = potensiItems.filter((item) => {
+    // Admin Dinas Pertanian: Tidak dapat mengakses data perikanan
+    if (role === "ADMIN_PERTANIAN" && item.sector === "perikanan") return false;
+    // Admin Dinas Perikanan: Hanya bisa akses data perikanan
+    if (role === "ADMIN_PERIKANAN" && item.sector !== "perikanan") return false;
+    return true;
+  });
 
   const bottomNavItems = [
     {
@@ -242,7 +254,7 @@ export default function Sidebar({
             {/* Sub-menu items Data Potensi */}
             {potensiOpen && (
               <div className="mt-1 ml-4 pl-3 border-l border-emerald-800/60 space-y-1">
-                {potensiItems.map((subItem) => {
+                {filteredPotensiItems.map((subItem) => {
                   const isSubActive = pathname.startsWith(subItem.href);
                   return (
                     <Link

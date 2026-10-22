@@ -50,6 +50,7 @@ export async function GET(req: Request) {
         aktif: pengguna.aktif,
         kd_kecamatan: pengguna.kd_kecamatan,
         kd_desa: pengguna.kd_desa,
+        kd_desa_list: (pengguna as any).kd_desa_list || [],
         kecamatan: pengguna.kecamatan ? { kd_kecamatan: pengguna.kecamatan.kd_kecamatan, nm_kecamatan: pengguna.kecamatan.nm_kecamatan } : null,
         desa: pengguna.desa ? { kd_desa: pengguna.desa.kd_desa, nm_desa: pengguna.desa.nm_desa } : null,
       },

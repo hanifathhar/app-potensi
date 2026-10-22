@@ -68,6 +68,7 @@ export async function POST(req: Request) {
         peran: pengguna.peran,
         kd_kecamatan: pengguna.kd_kecamatan,
         kd_desa: pengguna.kd_desa,
+        kd_desa_list: (pengguna as any).kd_desa_list || [],
       },
       JWT_SECRET,
       { expiresIn: "1d" }
@@ -81,6 +82,7 @@ export async function POST(req: Request) {
       role: pengguna.peran,
       kd_kecamatan: pengguna.kd_kecamatan,
       kd_desa: pengguna.kd_desa,
+      kd_desa_list: (pengguna as any).kd_desa_list || [],
       kecamatan: pengguna.kecamatan,
       desa: pengguna.desa,
     };

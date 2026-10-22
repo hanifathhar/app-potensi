@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
-import jwt, { JwtPayload } from "jsonwebtoken";
-import { prisma } from "@/lib/prisma";
+import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "rahasia-super-aman";
 
@@ -9,10 +8,19 @@ export interface UserAuth {
   nama: string;
   username: string;
   email?: string | null;
-  peran: "SUPERADMIN" | "ADMIN_KABUPATEN" | "ADMIN_KECAMATAN" | "ADMIN_DESA" | "PETUGAS" | "KELOMPOK_TANI";
+  peran:
+    | "SUPERADMIN"
+    | "ADMIN_KABUPATEN"
+    | "ADMIN_PERTANIAN"
+    | "ADMIN_PERIKANAN"
+    | "ADMIN_KECAMATAN"
+    | "ADMIN_DESA"
+    | "PETUGAS"
+    | "KELOMPOK_TANI";
   role: string;
   kd_kecamatan?: string | null;
   kd_desa?: string | null;
+  kd_desa_list?: string[];
 }
 
 export function getUserFromRequest(req: Request | NextRequest): UserAuth | null {
@@ -33,6 +41,12 @@ export function getUserFromRequest(req: Request | NextRequest): UserAuth | null 
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     if (!decoded || !decoded.id) return null;
 
+    const desaList = Array.isArray(decoded.kd_desa_list)
+      ? decoded.kd_desa_list
+      : decoded.kd_desa
+      ? [decoded.kd_desa]
+      : [];
+
     return {
       id: String(decoded.id),
       nama: decoded.nama,
@@ -42,6 +56,7 @@ export function getUserFromRequest(req: Request | NextRequest): UserAuth | null 
       role: decoded.role || decoded.peran || "PETUGAS",
       kd_kecamatan: decoded.kd_kecamatan || null,
       kd_desa: decoded.kd_desa || null,
+      kd_desa_list: desaList,
     };
   } catch (error) {
     return null;
@@ -49,12 +64,52 @@ export function getUserFromRequest(req: Request | NextRequest): UserAuth | null 
 }
 
 /**
+ * Validates sector access for Admin Dinas Pertanian & Admin Dinas Perikanan
+ */
+export function canAccessSector(
+  user: UserAuth | null,
+  sector: "pertanian" | "perikanan" | "peternakan"
+): boolean {
+  if (!user) return false;
+  if (user.peran === "SUPERADMIN" || user.peran === "ADMIN_KABUPATEN") return true;
+
+  // Rule 1: Admin Dinas Pertanian TIDAK DAPAT mengakses data perikanan
+  if (user.peran === "ADMIN_PERTANIAN") {
+    return sector !== "perikanan";
+  }
+
+  // Rule 2: Admin Dinas Perikanan HANYA BISA akses data perikanan
+  if (user.peran === "ADMIN_PERIKANAN") {
+    return sector === "perikanan";
+  }
+
+  return true;
+}
+
+/**
  * Returns Prisma filter clause based on User Role & Authority
  */
-export function getAuthorityFilter(user: UserAuth | null, requestedKecamatan?: string | null, requestedDesa?: string | null) {
+export function getAuthorityFilter(
+  user: UserAuth | null,
+  requestedKecamatan?: string | null,
+  requestedDesa?: string | null
+) {
   if (!user || user.peran === "SUPERADMIN" || user.peran === "ADMIN_KABUPATEN") {
     const filter: any = {};
     if (requestedKecamatan && requestedKecamatan !== "semua") {
+      filter.kd_kecamatan = requestedKecamatan;
+    }
+    if (requestedDesa && requestedDesa !== "semua") {
+      filter.kd_desa = requestedDesa;
+    }
+    return filter;
+  }
+
+  if (user.peran === "ADMIN_PERTANIAN" || user.peran === "ADMIN_PERIKANAN") {
+    const filter: any = {};
+    if (user.kd_kecamatan) {
+      filter.kd_kecamatan = user.kd_kecamatan;
+    } else if (requestedKecamatan && requestedKecamatan !== "semua") {
       filter.kd_kecamatan = requestedKecamatan;
     }
     if (requestedDesa && requestedDesa !== "semua") {
@@ -71,17 +126,31 @@ export function getAuthorityFilter(user: UserAuth | null, requestedKecamatan?: s
     return filter;
   }
 
-  if (user.peran === "PETUGAS" || user.peran === "ADMIN_DESA") {
+  // Rule 3: Petugas PPL dapat ditugaskan di banyak desa tetapi hanya boleh di dalam satu kecamatan
+  if (user.peran === "PETUGAS") {
     const filter: any = { kd_kecamatan: user.kd_kecamatan || "0" };
-    if (user.kd_desa) {
-      filter.kd_desa = user.kd_desa;
-    } else if (requestedDesa && requestedDesa !== "semua") {
-      filter.kd_desa = requestedDesa;
+    const desaList =
+      user.kd_desa_list && user.kd_desa_list.length > 0
+        ? user.kd_desa_list
+        : user.kd_desa
+        ? [user.kd_desa]
+        : [];
+
+    if (requestedDesa && requestedDesa !== "semua") {
+      if (desaList.length === 0 || desaList.includes(requestedDesa)) {
+        filter.kd_desa = requestedDesa;
+      } else {
+        filter.kd_desa = "unauthorized_desa";
+      }
+    } else if (desaList.length === 1) {
+      filter.kd_desa = desaList[0];
+    } else if (desaList.length > 1) {
+      filter.kd_desa = { in: desaList };
     }
     return filter;
   }
 
-  if (user.peran === "KELOMPOK_TANI") {
+  if (user.peran === "ADMIN_DESA" || user.peran === "KELOMPOK_TANI") {
     const filter: any = { kd_kecamatan: user.kd_kecamatan || "0" };
     if (user.kd_desa) {
       filter.kd_desa = user.kd_desa;
@@ -103,11 +172,35 @@ export function isAuthorizedForTerritory(
   if (!user) return false;
   if (user.peran === "SUPERADMIN" || user.peran === "ADMIN_KABUPATEN") return true;
 
+  if (user.peran === "ADMIN_PERTANIAN" || user.peran === "ADMIN_PERIKANAN") {
+    if (user.kd_kecamatan && targetKecamatan && targetKecamatan !== user.kd_kecamatan) return false;
+    return true;
+  }
+
   if (user.peran === "ADMIN_KECAMATAN") {
     return Boolean(targetKecamatan && targetKecamatan === user.kd_kecamatan);
   }
 
-  if (user.peran === "PETUGAS" || user.peran === "ADMIN_DESA" || user.peran === "KELOMPOK_TANI") {
+  // Rule 3: PPL Territory check
+  if (user.peran === "PETUGAS") {
+    // Harus di dalam kecamatan yang sama
+    if (targetKecamatan && targetKecamatan !== user.kd_kecamatan) return false;
+
+    const desaList =
+      user.kd_desa_list && user.kd_desa_list.length > 0
+        ? user.kd_desa_list
+        : user.kd_desa
+        ? [user.kd_desa]
+        : [];
+
+    // Jika memiliki penugasan desa spesifik, target desa harus cocok
+    if (desaList.length > 0 && targetDesa) {
+      return desaList.includes(targetDesa);
+    }
+    return true;
+  }
+
+  if (user.peran === "ADMIN_DESA" || user.peran === "KELOMPOK_TANI") {
     if (targetKecamatan && targetKecamatan !== user.kd_kecamatan) return false;
     if (user.kd_desa && targetDesa && targetDesa !== user.kd_desa) return false;
     return true;
