@@ -43,6 +43,7 @@ import {
 } from "recharts";
 import PotensiMap from "@/components/dashboard/PotensiMap";
 import PendanaanTerbaruSection from "@/components/dashboard/PendanaanTerbaruSection";
+import KomposisiPendanaanSection from "@/components/dashboard/KomposisiPendanaanSection";
 import {
   exportRekapKecamatanPDF,
   exportPendanaanPDF,
@@ -758,7 +759,15 @@ export default function DashboardTaniTapselPage() {
 
           {/* D. INFORMASI PENDANAAN USAHA & FILTER */}
           <div className="w-full">
-            <PendanaanTerbaruSection data={data?.pendanaanTerbaru} loading={loading} />
+            {isPertanianAdmin || isPerikananAdmin ? (
+              <KomposisiPendanaanSection
+                data={data?.pendanaanTerbaru}
+                loading={loading}
+                sector={isPerikananAdmin ? "Perikanan" : "Pertanian"}
+              />
+            ) : (
+              <PendanaanTerbaruSection data={data?.pendanaanTerbaru} loading={loading} />
+            )}
           </div>
         </div>
       )}
