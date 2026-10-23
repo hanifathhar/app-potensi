@@ -8,9 +8,9 @@ export async function GET(request: Request) {
     const kd_kecamatan = url.searchParams.get("kd_kecamatan") || "semua";
     const user = getUserFromRequest(request);
 
-    const allowPertanian = canAccessSector(user, "pertanian");
-    const allowPerikanan = canAccessSector(user, "perikanan");
-    const allowPeternakan = canAccessSector(user, "peternakan");
+    const allowPertanian = !user || canAccessSector(user, "pertanian");
+    const allowPerikanan = !user || canAccessSector(user, "perikanan");
+    const allowPeternakan = !user || canAccessSector(user, "peternakan");
 
     // 1. Terapkan filter wilayah berdasarkan hak akses pengguna
     const authorityFilter = getAuthorityFilter(user, kd_kecamatan);
@@ -149,21 +149,21 @@ export async function GET(request: Request) {
       allowPertanian
         ? prisma.pendanaanKebun.findMany({
             where: unitWhereKebun,
-            include: { kebun: { include: { desa: true, kecamatan: true } } },
+            include: { kebun: { include: { desa: true, kecamatan: true, komoditas: true, kelompokTani: true } } },
             orderBy: { createdAt: "desc" },
           })
         : Promise.resolve([]),
       allowPerikanan
         ? prisma.pendanaanKolam.findMany({
             where: unitWhereKolam,
-            include: { kolam: { include: { desa: true, kecamatan: true } } },
+            include: { kolam: { include: { desa: true, kecamatan: true, komoditas: true, kelompokTani: true } } },
             orderBy: { createdAt: "desc" },
           })
         : Promise.resolve([]),
       allowPeternakan
         ? prisma.pendanaanPeternakan.findMany({
             where: unitWhereTernak,
-            include: { peternakan: { include: { desa: true, kecamatan: true } } },
+            include: { peternakan: { include: { desa: true, kecamatan: true, komoditas: true, kelompokTani: true } } },
             orderBy: { createdAt: "desc" },
           })
         : Promise.resolve([]),
@@ -419,6 +419,83 @@ export async function GET(request: Request) {
             ? "bg-sky-600"
             : "bg-amber-500",
       };
+    });
+
+    // Helper pemetaan nama resmi sumber dana sesuai sistem
+    const normalizeSumberDana = (sumberDana?: string, namaSumberDana?: string): string => {
+      const s = (sumberDana || "").toUpperCase();
+      const ns = (namaSumberDana || "").trim();
+
+      if (s === "KUR" || s.includes("KUR") || ns.toUpperCase().includes("BANK SUMUT")) return "KUR (Kredit Usaha Rakyat)";
+      if (s === "APBD_KABUPATEN" || ns.toUpperCase().includes("TAPSEL") || ns.toUpperCase().includes("DINAS")) return "APBD Tapsel";
+      if (s === "APBD_PROVINSI" || ns.toUpperCase().includes("PROVINSI")) return "APBD Provinsi";
+      if (s === "APBN" || ns.toUpperCase().includes("APBN") || ns.toUpperCase().includes("PUSAT")) return "APBN (Pusat)";
+      if (s === "DANA_DESA" || ns.toUpperCase().includes("DANA DESA") || ns.toUpperCase().includes("DESA")) return "Dana Desa";
+      if (s === "SWADAYA" || ns.toUpperCase().includes("SWADAYA")) return "Swadaya";
+      if (s === "BANTUAN_PEMERINTAH" || ns.toUpperCase().includes("DAK") || ns.toUpperCase().includes("BANTUAN")) return "Bantuan Pemerintah";
+      if (s === "CSR" || ns.toUpperCase().includes("CSR") || ns.toUpperCase().includes("BUMN")) return "CSR / BUMN";
+      if (s === "PERBANKAN") return "Perbankan";
+      if (s === "LAINNYA") return "Lainnya";
+
+      return ns || s || "Lainnya";
+    };
+
+    // 6b. Data Terbaru Pendanaan Usaha (100% Real Database)
+    const pendanaanTerbaru: any[] = [];
+    if (allowPertanian) {
+      danaKebunDb.forEach((d: any) => {
+        pendanaanTerbaru.push({
+          id: `pk-${d.id}`,
+          namaPenerima: d.kebun?.kelompokTani?.nm_kelompok || d.kebun?.namaPemilik || d.kebun?.nama || "Kelompok Tani",
+          sektor: "Pertanian",
+          jenisUsaha: d.kebun?.komoditas?.nm_komoditas || d.kebun?.jenisTanaman || "Padi",
+          tahun: d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : 2026),
+          sumberDana: normalizeSumberDana(d.sumberDana, d.namaSumberDana),
+          sumberDanaRaw: d.sumberDana,
+          namaSumberDana: d.namaSumberDana || null,
+          nilaiBantuan: Number(d.danaDicairkan || d.danaDisetujui || d.danaDiajukan || 0),
+          createdAt: d.createdAt,
+        });
+      });
+    }
+    if (allowPerikanan) {
+      danaKolamDb.forEach((d: any) => {
+        pendanaanTerbaru.push({
+          id: `pl-${d.id}`,
+          namaPenerima: d.kolam?.kelompokTani?.nm_kelompok || d.kolam?.namaPemilik || d.kolam?.nm_kolam || "Pokdakan",
+          sektor: "Perikanan",
+          jenisUsaha: d.kolam?.komoditas?.nm_komoditas || "Budidaya Ikan",
+          tahun: d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : 2026),
+          sumberDana: normalizeSumberDana(d.sumberDana, d.namaSumberDana),
+          sumberDanaRaw: d.sumberDana,
+          namaSumberDana: d.namaSumberDana || null,
+          nilaiBantuan: Number(d.danaDicairkan || d.danaDisetujui || d.danaDiajukan || 0),
+          createdAt: d.createdAt,
+        });
+      });
+    }
+    if (allowPeternakan) {
+      danaTernakDb.forEach((d: any) => {
+        pendanaanTerbaru.push({
+          id: `pt-${d.id}`,
+          namaPenerima: d.peternakan?.kelompokTani?.nm_kelompok || d.peternakan?.namaPemilik || d.peternakan?.nm_peternakan || "Kelompok Ternak",
+          sektor: "Peternakan",
+          jenisUsaha: d.peternakan?.komoditas?.nm_komoditas || "Sapi Potong",
+          tahun: d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : 2026),
+          sumberDana: normalizeSumberDana(d.sumberDana, d.namaSumberDana),
+          sumberDanaRaw: d.sumberDana,
+          namaSumberDana: d.namaSumberDana || null,
+          nilaiBantuan: Number(d.danaDicairkan || d.danaDisetujui || d.danaDiajukan || 0),
+          createdAt: d.createdAt,
+        });
+      });
+    }
+
+    // Urutkan data berdasarkan tahun anggaran terbaru, lalu waktu pencatatan
+    pendanaanTerbaru.sort((a, b) => {
+      const yearDiff = Number(b.tahun) - Number(a.tahun);
+      if (yearDiff !== 0) return yearDiff;
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
     });
 
     // 7. Map Pins Real DB
@@ -795,6 +872,7 @@ export async function GET(request: Request) {
       lastUpdate,
       jadwalList,
       pendanaanList,
+      pendanaanTerbaru,
       mapPins,
       kecamatanList: allKecamatan.map((k) => ({
         kd_kecamatan: k.kd_kecamatan,

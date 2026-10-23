@@ -42,6 +42,7 @@ import {
   LabelList,
 } from "recharts";
 import PotensiMap from "@/components/dashboard/PotensiMap";
+import PendanaanTerbaruSection from "@/components/dashboard/PendanaanTerbaruSection";
 import {
   exportRekapKecamatanPDF,
   exportPendanaanPDF,
@@ -126,13 +127,13 @@ export default function DashboardTaniTapselPage() {
     isPerikananAdmin && data?.komposisiKolamData
       ? data.komposisiKolamData
       : data?.komposisiData || {
-          title: "Komposisi Data",
-          subtitle: "Persentase masing-masing sektor",
-          total: 0,
-          displayTotal: "0",
-          unitLabel: "Data",
-          items: [],
-        };
+        title: "Komposisi Data",
+        subtitle: "Persentase masing-masing sektor",
+        total: 0,
+        displayTotal: "0",
+        unitLabel: "Data",
+        items: [],
+      };
   const detailPertanian = data?.detailPertanian || {
     totalUnit: 0,
     totalLuasHa: 0,
@@ -236,12 +237,11 @@ export default function DashboardTaniTapselPage() {
               <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight">
                 Selamat Datang di{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-sky-300">
-                  DATA POTENSI TAPSEL
+                  SIDALIHAN
                 </span>
               </h1>
               <p className="text-xs sm:text-sm text-emerald-100/80 mt-1 max-w-xl font-medium">
-                Sistem Informasi Terpadu Potensi Pertanian, Perikanan dan Peternakan
-                Kabupaten Tapanuli Selatan
+                Sistem Informasi Data Agro Layanan Informasi Hasil Angkola Nusantara
               </p>
             </div>
           </div>
@@ -249,7 +249,7 @@ export default function DashboardTaniTapselPage() {
           <div className="flex flex-col sm:items-end gap-2.5">
             <div className="px-3.5 py-1.5 rounded-xl bg-white/15 backdrop-blur-md border border-white/20 shadow-xs">
               <span className="text-xs font-bold tracking-wide text-amber-300 italic">
-                “Data Lengkap, Petani Sejahtera, Tapsel Maju”
+                “Dari Pajak Rakyat, Dimanfaatkan oleh rakyat untuk Tapsel Berdaulat”
               </span>
             </div>
 
@@ -756,9 +756,10 @@ export default function DashboardTaniTapselPage() {
             />
           </div>
 
-
-
-
+          {/* D. INFORMASI PENDANAAN USAHA & FILTER */}
+          <div className="w-full">
+            <PendanaanTerbaruSection data={data?.pendanaanTerbaru} loading={loading} />
+          </div>
         </div>
       )}
 

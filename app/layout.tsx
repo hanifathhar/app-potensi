@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Data Potensi Tapsel",
-  description: "Sistem Informasi Data Pertanian, Perikanan dan Peternakan Kabupaten Tapanuli Selatan",
+  title: "SIDALIHAN",
+  description: "Sistem Informasi Data Agro Layanan Informasi Hasil Angkola Nusantara",
   icons: {
     icon: "/favicon.png",
   },

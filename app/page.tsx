@@ -32,6 +32,31 @@ import PortalMapSection from "@/components/landing/PortalMapSection";
 export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
+  // Dapatkan tahun anggaran terkini yang tercatat di database atau kalender berjalan
+  const [latestKebunYear, latestKolamYear, latestTernakYear] = await Promise.all([
+    prisma.pendanaanKebun.findFirst({
+      select: { tahunAnggaran: true },
+      orderBy: { tahunAnggaran: "desc" },
+    }),
+    prisma.pendanaanKolam.findFirst({
+      select: { tahunAnggaran: true },
+      orderBy: { tahunAnggaran: "desc" },
+    }),
+    prisma.pendanaanPeternakan.findFirst({
+      select: { tahunAnggaran: true },
+      orderBy: { tahunAnggaran: "desc" },
+    }),
+  ]);
+
+  const candidateYears = [
+    latestKebunYear?.tahunAnggaran,
+    latestKolamYear?.tahunAnggaran,
+    latestTernakYear?.tahunAnggaran,
+    new Date().getFullYear(),
+  ].filter((y): y is number => typeof y === "number");
+
+  const tahunTerkini = Math.max(...candidateYears);
+
   // Query live database metrics in parallel
   const [
     kebunCount,
@@ -59,9 +84,18 @@ export default async function LandingPage() {
       select: { kd_kecamatan: true, nm_kecamatan: true },
       orderBy: { nm_kecamatan: "asc" },
     }),
-    prisma.pendanaanKebun.aggregate({ _sum: { danaDicairkan: true } }),
-    prisma.pendanaanKolam.aggregate({ _sum: { danaDicairkan: true } }),
-    prisma.pendanaanPeternakan.aggregate({ _sum: { danaDicairkan: true } }),
+    prisma.pendanaanKebun.aggregate({
+      where: { tahunAnggaran: tahunTerkini },
+      _sum: { danaDicairkan: true },
+    }),
+    prisma.pendanaanKolam.aggregate({
+      where: { tahunAnggaran: tahunTerkini },
+      _sum: { danaDicairkan: true },
+    }),
+    prisma.pendanaanPeternakan.aggregate({
+      where: { tahunAnggaran: tahunTerkini },
+      _sum: { danaDicairkan: true },
+    }),
     prisma.kecamatan.findMany({
       select: {
         nm_kecamatan: true,
@@ -205,10 +239,10 @@ export default async function LandingPage() {
               <div className="h-8 w-px bg-slate-200 hidden sm:block" />
               <div className="hidden sm:block leading-tight">
                 <p className="text-xs font-black text-slate-900 tracking-wide">
-                  DATA POTENSI TAPSEL
+                  SIDALIHAN
                 </p>
                 <p className="text-[10px] text-slate-500 font-medium">
-                  Sistem Informasi Data Pertanian, Perikanan dan Peternakan
+                  Sistem Informasi Data Agro Layanan Informasi Hasil Angkola Nusantara
                 </p>
               </div>
             </div>
@@ -272,8 +306,7 @@ export default async function LandingPage() {
               </h1>
 
               <p className="text-sm sm:text-base text-emerald-100/90 font-medium leading-relaxed max-w-xl">
-                Sistem informasi terpadu untuk mendukung pembangunan sektor pertanian,
-                perikanan dan peternakan di Kabupaten Tapanuli Selatan.
+                Sistem Informasi Data Agro Layanan Informasi Hasil Angkola Nusantara
               </p>
 
               <div className="pt-2 flex flex-wrap items-center gap-3">
@@ -390,7 +423,7 @@ export default async function LandingPage() {
               </div>
             </div>
             <div className="flex items-center justify-between text-xs font-bold pt-3 mt-3 border-t border-slate-100">
-              <span className="text-slate-500 font-semibold">Tahun 2026</span>
+              <span className="text-slate-500 font-semibold">Tahun {tahunTerkini}</span>
               <span className="inline-flex items-center gap-1 text-emerald-700 font-extrabold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-[10px]">
                 <Check size={11} />
                 <span>Aktif</span>
@@ -664,15 +697,6 @@ export default async function LandingPage() {
           <div className="flex items-center gap-2 text-slate-400">
             <MapPin size={14} className="text-emerald-500 shrink-0" />
             <span>Kabupaten Tapanuli Selatan, Sumatera Utara</span>
-          </div>
-
-          {/* Slogan Center */}
-          <div className="text-center font-serif italic text-amber-200/90 tracking-wide font-medium">
-            <span>Data Akurat</span>
-            <span className="mx-2 text-emerald-500">•</span>
-            <span>Potensi Optimal</span>
-            <span className="mx-2 text-emerald-500">•</span>
-            <span>Tapsel Maju</span>
           </div>
 
           {/* Timestamp on Right */}

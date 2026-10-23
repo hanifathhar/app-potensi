@@ -205,14 +205,14 @@ export default function Sidebar({
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-extrabold text-base tracking-wider text-white">
-                  DATA POTENSI
+                  SIDALIHAN
                 </span>
                 <span className="font-extrabold text-base tracking-wider text-emerald-400">
                   TAPSEL
                 </span>
               </div>
               <p className="text-[10px] text-emerald-200/70 font-medium tracking-tight">
-                Kabupaten Tapanuli Selatan
+                Sinergi Dalihan Natolu untuk Tapsel Bangkit
               </p>
             </div>
           </Link>

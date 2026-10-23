@@ -135,7 +135,7 @@ export default function LoginPage() {
             </div>
             <div>
               <h2 className="text-xl font-extrabold tracking-wider text-white">
-                DATA POTENSI TAPSEL
+                SIDALIHAN
               </h2>
               <p className="text-xs text-emerald-200/80 font-medium">
                 Pemerintah Kabupaten Tapanuli Selatan
@@ -144,7 +144,7 @@ export default function LoginPage() {
           </div>
 
           <h1 className="text-3xl xl:text-4xl font-extrabold text-white leading-tight max-w-xl">
-            Sistem Informasi Data Pertanian, Perikanan dan Peternakan
+            Sistem Informasi Data Agro Layanan Informasi Hasil Angkola Nusantara
           </h1>
           <p className="text-sm text-emerald-100/80 mt-3 max-w-lg leading-relaxed font-medium">
             Portal data terintegrasi dari tingkat desa, kelompok tani, hingga kabupaten untuk
@@ -174,7 +174,7 @@ export default function LoginPage() {
         <div className="relative z-10 pt-4 border-t border-emerald-800/40 text-xs text-emerald-200/60 flex items-center justify-between">
           <span>&copy; 2026 Pemerintah Kabupaten Tapanuli Selatan. All rights reserved.</span>
           <span className="italic font-semibold text-emerald-300">
-            “Data Lengkap, Petani Sejahtera, Tapsel Maju”
+            “Dari Pajak Rakyat, Dimanfaatkan oleh rakyat untuk Tapsel Berdaulat”
           </span>
         </div>
       </div>
