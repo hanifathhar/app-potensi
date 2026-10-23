@@ -295,7 +295,7 @@ export default function PeternakanDetailView({ ternak }: PeternakanDetailViewPro
                 Estimasi Produksi
               </span>
               <div className="text-2xl font-black text-amber-600 mt-1 flex items-baseline gap-1">
-                ~{Number(((ternak.jumlahTernak || 150) * 0.9).toFixed(0))}
+                ~{Number(((Number(ternak.jumlahTernak || 0)) * 0.9).toFixed(0))}
                 <span className="text-xs font-semibold text-slate-500">Butir/Hari</span>
               </div>
               <p className="text-[11px] text-slate-500 mt-1">Potensi telur harian</p>
