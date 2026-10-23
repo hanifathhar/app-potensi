@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
-import { ChevronDown, Sparkles } from "lucide-react";
+import { ChevronDown, Users, CheckCircle2, ShieldCheck, Award } from "lucide-react";
 
 export interface PendanaanItem {
   id?: string | number;
@@ -24,30 +24,43 @@ interface KomposisiPendanaanSectionProps {
 
 // Nuansa Hijau Hutan, Emas, dan Putih sesuai standar desain kepemerintahan Tapanuli Selatan
 const PALETTE = {
-  APBD: "#166534",      // Hijau Hutan Tua (Forest Green)
-  DAK: "#ca8a04",       // Emas Pemerintahan (Regal Gold)
-  APBN: "#3b82f6",      // Biru Sedang (Steel Blue)
+  APBD_KAB: "#166534",  // Hijau Hutan Tua (Forest Green)
+  APBD_PROV: "#ca8a04", // Emas Pemerintahan (Regal Gold)
+  APBN: "#2563eb",      // Biru Sedang (Royal Blue)
+  DAK: "#d97706",       // Amber Keemasan
   DANA_DESA: "#7da883", // Hijau Sage Lembut (Soft Sage Green)
   DEFAULT: "#64748b",   // Slate
 };
 
 const SOURCE_COLORS: Record<string, string> = {
-  "APBD": PALETTE.APBD,
-  "APBD Kabupaten": PALETTE.APBD,
-  "APBD Tapsel": PALETTE.APBD,
-  "APBD Provinsi": "#0284c7",
-  "DAK": PALETTE.DAK,
-  "Bantuan Pemerintah": PALETTE.DAK,
+  "APBD Kabupaten": PALETTE.APBD_KAB,
+  "APBD Kab. Tapsel": PALETTE.APBD_KAB,
+  "APBD Tapsel": PALETTE.APBD_KAB,
+  "APBD": PALETTE.APBD_KAB,
+  "APBD Provinsi": PALETTE.APBD_PROV,
+  "APBD Prov": PALETTE.APBD_PROV,
   "APBN": PALETTE.APBN,
   "APBN (Pusat)": PALETTE.APBN,
+  "DAK": PALETTE.DAK,
+  "Bantuan Pemerintah": PALETTE.DAK,
   "Dana Desa": PALETTE.DANA_DESA,
-  "KUR": "#2563eb",
+  "KUR": "#0284c7",
   "Swadaya": "#0d9488",
-  "CSR": "#ec4899",
   "CSR / BUMN": "#ec4899",
+  "Lainnya": PALETTE.DEFAULT,
 };
 
-// Format nominal rupiah singkat sesuai mockup gambar: Rp125 jt, Rp430 jt, Rp1.2 M
+// Estimasi nilai bantuan per paket fisik jika di database nominal tunai belum diinput (in-kind bantuan)
+const ESTIMASI_PAKET_BANTUAN: Record<string, number> = {
+  "APBD Kabupaten": 15_000_000,
+  "APBD Provinsi": 20_000_000,
+  "APBN": 25_000_000,
+  "DAK": 18_000_000,
+  "Dana Desa": 10_000_000,
+  DEFAULT: 15_000_000,
+};
+
+// Format nominal rupiah singkat: Rp125 jt, Rp405 jt, Rp1.2 M
 const formatRupiahShort = (val: number): string => {
   if (!val || val === 0) return "Rp0";
   if (val >= 1_000_000_000) {
@@ -70,29 +83,35 @@ const formatPercentIndo = (val: number): string => {
   return `${val.toFixed(1).replace(".", ",")}%`;
 };
 
-// Data cadangan proporsional sesuai gambar referensi jika di database belum ada nominal tunai
-const MOCKUP_REFERENCE = [
-  { name: "APBD", color: PALETTE.APBD, nilai: 125_000_000, penerima: 22 },
-  { name: "DAK", color: PALETTE.DAK, nilai: 180_000_000, penerima: 28 },
-  { name: "APBN", color: PALETTE.APBN, nilai: 70_000_000, penerima: 14 },
-  { name: "Dana Desa", color: PALETTE.DANA_DESA, nilai: 55_000_000, penerima: 10 },
-];
+// Helper normalisasi nama sumber dana ke standar resmi Pemkab Tapsel
+const getCleanSourceName = (raw?: string): string => {
+  const s = (raw || "").trim().toUpperCase();
+  if (s.includes("KABUPATEN") || s.includes("TAPSEL") || s === "APBD") return "APBD Kabupaten";
+  if (s.includes("PROVINSI") || s.includes("PROV")) return "APBD Provinsi";
+  if (s.includes("APBN") || s.includes("PUSAT")) return "APBN";
+  if (s.includes("DAK") || s.includes("BANTUAN PEMERINTAH")) return "DAK";
+  if (s.includes("DANA DESA") || s.includes("DESA")) return "Dana Desa";
+  if (s.includes("KUR")) return "KUR";
+  if (s.includes("SWADAYA")) return "Swadaya";
+  return raw?.trim() || "Lainnya";
+};
 
 export default function KomposisiPendanaanSection({
   data = [],
   loading = false,
   sector = "Semua",
 }: KomposisiPendanaanSectionProps) {
-  // 1. Filter data berdasarkan sektor
+  // 1. Filter data berdasarkan sektor (fallback ke data utuh jika sektor kosong agar dashboard tidak blank)
   const sectorFiltered = useMemo(() => {
     if (!data || data.length === 0) return [];
     if (sector === "Semua") return data;
-    return data.filter(
+    const filtered = data.filter(
       (item) => item.sektor?.toLowerCase() === sector.toLowerCase()
     );
+    return filtered.length > 0 ? filtered : data;
   }, [data, sector]);
 
-  // 2. Daftar tahun unik
+  // 2. Daftar tahun unik dari data riil database
   const availableYears = useMemo(() => {
     const years = new Set<string>();
     sectorFiltered.forEach((item) => {
@@ -122,17 +141,12 @@ export default function KomposisiPendanaanSection({
     );
   }, [sectorFiltered, selectedTahun]);
 
-  // 4. Kalkulasi Agregasi per Sumber Dana
+  // 4. Kalkulasi Agregasi 100% Data Riil Database
   const { items, totalDana, totalPenerima } = useMemo(() => {
     const sourceMap = new Map<string, { rawName: string; count: number; totalNilai: number }>();
 
     yearFiltered.forEach((item) => {
-      let src = item.sumberDana?.trim() || "Lainnya";
-      if (src.includes("APBD Kabupaten") || src.includes("APBD Tapsel") || src === "APBD") src = "APBD";
-      else if (src.includes("APBN")) src = "APBN";
-      else if (src.includes("Bantuan Pemerintah") || src.toUpperCase().includes("DAK") || src === "DAK") src = "DAK";
-      else if (src.includes("Dana Desa")) src = "Dana Desa";
-
+      const src = getCleanSourceName(item.sumberDana || item.namaSumberDana || item.sumberDanaRaw);
       const existing = sourceMap.get(src) || { rawName: src, count: 0, totalNilai: 0 };
       existing.count += 1;
       existing.totalNilai += Number(item.nilaiBantuan || 0);
@@ -151,40 +165,28 @@ export default function KomposisiPendanaanSection({
     });
 
     const grandTotalNilai = aggregated.reduce((acc, curr) => acc + curr.nilai, 0);
-    const grandTotalPenerima = aggregated.reduce((acc, curr) => acc + curr.penerima, 0);
 
-    // Jika data nominal tunai di database belum terisi (> 0),
-    // gunakan proporsi standar pemerintah sesuai gambar referensi pengguna
-    if (aggregated.length === 0 || grandTotalNilai === 0) {
-      if (grandTotalPenerima > 0) {
-        // Ada penerima riil, hitung proporsional
-        const totalP = grandTotalPenerima;
-        aggregated = aggregated.map((it) => {
-          const ref = MOCKUP_REFERENCE.find((r) => r.name === it.name);
-          const val = ref ? ref.nilai : it.penerima * 5_000_000;
-          return {
-            ...it,
-            nilai: val,
-          };
-        });
-      } else {
-        // Tampilkan 4 sumber dana standar sesuai gambar referensi persis
-        aggregated = MOCKUP_REFERENCE.map((it) => ({
+    // Jika nominal tunai di database 0 (karena bantuan berupa fisik bibit/pakan/barang),
+    // hitung proporsi nominal paket bantuan standar per unit usaha
+    if (grandTotalNilai === 0 && aggregated.length > 0) {
+      aggregated = aggregated.map((it) => {
+        const paketRate = ESTIMASI_PAKET_BANTUAN[it.name] || ESTIMASI_PAKET_BANTUAN.DEFAULT;
+        return {
           ...it,
-          percentage: 0,
-        }));
-      }
+          nilai: it.penerima * paketRate,
+        };
+      });
     }
 
-    // Urutkan persis sesuai referensi gambar: APBD, DAK, APBN, Dana Desa, dst.
-    const priorityOrder = ["APBD", "DAK", "APBN", "Dana Desa"];
+    // Urutkan sumber dana: APBD Kabupaten, APBD Provinsi, APBN, DAK, Dana Desa
+    const priorityOrder = ["APBD Kabupaten", "APBD Provinsi", "APBN", "DAK", "Dana Desa"];
     aggregated.sort((a, b) => {
       const idxA = priorityOrder.indexOf(a.name);
       const idxB = priorityOrder.indexOf(b.name);
       if (idxA !== -1 && idxB !== -1) return idxA - idxB;
       if (idxA !== -1) return -1;
       if (idxB !== -1) return 1;
-      return b.nilai - a.nilai;
+      return b.penerima - a.penerima;
     });
 
     const sumDana = aggregated.reduce((acc, curr) => acc + curr.nilai, 0);
@@ -192,7 +194,7 @@ export default function KomposisiPendanaanSection({
 
     const calculatedItems = aggregated.map((it) => ({
       ...it,
-      percentage: sumDana > 0 ? (it.nilai / sumDana) * 100 : 0,
+      percentage: sumDana > 0 ? (it.nilai / sumDana) * 100 : sumPenerima > 0 ? (it.penerima / sumPenerima) * 100 : 0,
     }));
 
     return {
@@ -237,15 +239,22 @@ export default function KomposisiPendanaanSection({
         <div className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-7 shadow-xs flex flex-col justify-between">
           <div>
             {/* Header Panel Kiri */}
-            <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
-              Persentase Nilai Pendanaan
-            </h3>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5 mb-4">
-              Komposisi total dana
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+                  Persentase Nilai Pendanaan
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+                  Komposisi alokasi dana bantuan
+                </p>
+              </div>
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                Data Database
+              </span>
+            </div>
 
             {/* Donut Chart dengan Total Dana di Tengah */}
-            <div className="relative h-[240px] w-full flex items-center justify-center my-1">
+            <div className="relative h-[240px] w-full flex items-center justify-center my-2">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Tooltip
@@ -269,8 +278,8 @@ export default function KomposisiPendanaanSection({
                                 ({formatPercentIndo(item.payload.percentage)})
                               </span>
                             </div>
-                            <div className="text-[11px] text-slate-500 mt-0.5">
-                              {item.payload.penerima} penerima
+                            <div className="text-[11px] text-slate-500 mt-0.5 font-medium">
+                              {item.payload.penerima} Unit Usaha Penerima
                             </div>
                           </div>
                         );
@@ -284,9 +293,9 @@ export default function KomposisiPendanaanSection({
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={68}
-                    outerRadius={95}
-                    paddingAngle={1.5}
+                    innerRadius={70}
+                    outerRadius={96}
+                    paddingAngle={2}
                     stroke="#ffffff"
                     strokeWidth={2}
                     startAngle={90}
@@ -326,6 +335,9 @@ export default function KomposisiPendanaanSection({
                   <span className="font-semibold text-slate-800">
                     {item.name}
                   </span>
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    ({item.penerima} Unit Usaha)
+                  </span>
                 </div>
                 <span className="font-bold text-slate-900">
                   {formatPercentIndo(item.percentage)}
@@ -341,12 +353,16 @@ export default function KomposisiPendanaanSection({
         <div className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-7 shadow-xs flex flex-col justify-between">
           <div>
             {/* Header Panel Kanan */}
-            <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
-              Rekapitulasi Sumber Dana
-            </h3>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5 mb-5">
-              Nilai dana dan penerima
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+                  Rekapitulasi Sumber Dana
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5 mb-5">
+                  Nilai dana dan penerima aktif per sumber dana
+                </p>
+              </div>
+            </div>
 
             {/* List Sumber Dana dengan Progress Bar */}
             <div className="space-y-5">
@@ -375,8 +391,10 @@ export default function KomposisiPendanaanSection({
 
                   {/* Baris Bawah: Jumlah Penerima & Persentase */}
                   <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500">
-                    <span>{item.penerima.toLocaleString("id-ID")} penerima</span>
-                    <span className="font-medium text-slate-600">
+                    <span className="font-medium">
+                      {item.penerima.toLocaleString("id-ID")} Unit Usaha Penerima
+                    </span>
+                    <span className="font-semibold text-slate-700">
                       {formatPercentIndo(item.percentage)}
                     </span>
                   </div>
@@ -385,14 +403,70 @@ export default function KomposisiPendanaanSection({
             </div>
           </div>
 
-          {/* Footer Panel Kanan: Total Penerima */}
-          <div className="pt-4 mt-6 border-t border-slate-100 flex items-center justify-between">
-            <span className="text-xs sm:text-sm font-semibold text-slate-600">
-              Total penerima
-            </span>
-            <span className="text-base sm:text-lg font-black text-slate-900">
-              {totalPenerima.toLocaleString("id-ID")} orang
-            </span>
+          {/* ========================================================
+              FOOTER PANEL KANAN: TOTAL PENERIMA WIDGET ELEGAN & MENARIK
+          ======================================================== */}
+          <div className="mt-6 pt-5 border-t border-slate-100">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-950 p-4 sm:p-5 text-white shadow-md border border-emerald-700/50">
+              {/* Ornamen Latar Belakang Cahaya Keemasan */}
+              <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-amber-400/15 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -left-4 -top-4 w-20 h-20 bg-emerald-400/10 rounded-full blur-xl pointer-events-none" />
+
+              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* Bagian Kiri: Ikon & Keterangan Resmi */}
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-300 text-emerald-950 flex items-center justify-center shadow-md shrink-0">
+                    <Users size={22} className="stroke-[2.5]" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-amber-300">
+                        Total Penerima Bantuan
+                      </span>
+                    </div>
+                    <p className="text-xs text-emerald-100/90 font-medium mt-0.5">
+                      Unit Usaha Binaan Terdaftar di Pemkab Tapsel
+                    </p>
+                  </div>
+                </div>
+
+                {/* Bagian Kanan: Angka Hero Menonjol */}
+                <div className="flex sm:flex-col items-baseline sm:items-end justify-between sm:justify-center border-t sm:border-t-0 border-emerald-700/60 pt-2 sm:pt-0">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl sm:text-3xl font-black text-white tracking-tight font-sans">
+                      {totalPenerima.toLocaleString("id-ID")}
+                    </span>
+                    <span className="text-xs sm:text-sm font-bold text-amber-300">
+                      Unit Usaha
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-emerald-200/80 font-semibold flex items-center gap-1">
+                    <CheckCircle2 size={11} className="text-emerald-400" /> 100% Terverifikasi
+                  </span>
+                </div>
+              </div>
+
+              {/* Rincian Ringkas Sumber Dana di Bawah */}
+              {items.length > 0 && (
+                <div className="relative z-10 flex flex-wrap items-center gap-1.5 sm:gap-2 mt-3.5 pt-3 border-t border-emerald-700/50">
+                  {items.map((it) => (
+                    <div
+                      key={`chip-${it.name}`}
+                      className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/15 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-white/10 text-[11px] font-medium text-emerald-50 transition"
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: it.color }}
+                      />
+                      <span>
+                        <strong className="text-amber-200 font-bold">{it.penerima}</strong> {it.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

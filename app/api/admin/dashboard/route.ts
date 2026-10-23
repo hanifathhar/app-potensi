@@ -146,27 +146,21 @@ export async function GET(request: Request) {
             take: 10,
           })
         : Promise.resolve([]),
-      allowPertanian
-        ? prisma.pendanaanKebun.findMany({
-            where: unitWhereKebun,
-            include: { kebun: { include: { desa: true, kecamatan: true, komoditas: true, kelompokTani: true } } },
-            orderBy: { createdAt: "desc" },
-          })
-        : Promise.resolve([]),
-      allowPerikanan
-        ? prisma.pendanaanKolam.findMany({
-            where: unitWhereKolam,
-            include: { kolam: { include: { desa: true, kecamatan: true, komoditas: true, kelompokTani: true } } },
-            orderBy: { createdAt: "desc" },
-          })
-        : Promise.resolve([]),
-      allowPeternakan
-        ? prisma.pendanaanPeternakan.findMany({
-            where: unitWhereTernak,
-            include: { peternakan: { include: { desa: true, kecamatan: true, komoditas: true, kelompokTani: true } } },
-            orderBy: { createdAt: "desc" },
-          })
-        : Promise.resolve([]),
+      prisma.pendanaanKebun.findMany({
+        where: unitWhereKebun,
+        include: { kebun: { include: { desa: true, kecamatan: true, komoditas: true, kelompokTani: true } } },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.pendanaanKolam.findMany({
+        where: unitWhereKolam,
+        include: { kolam: { include: { desa: true, kecamatan: true, komoditas: true, kelompokTani: true } } },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.pendanaanPeternakan.findMany({
+        where: unitWhereTernak,
+        include: { peternakan: { include: { desa: true, kecamatan: true, komoditas: true, kelompokTani: true } } },
+        orderBy: { createdAt: "desc" },
+      }),
       allowPertanian
         ? prisma.kebun.findMany({
             where: {
@@ -427,9 +421,9 @@ export async function GET(request: Request) {
       const ns = (namaSumberDana || "").trim();
 
       if (s === "KUR" || s.includes("KUR") || ns.toUpperCase().includes("BANK SUMUT")) return "KUR (Kredit Usaha Rakyat)";
-      if (s === "APBD_KABUPATEN" || ns.toUpperCase().includes("TAPSEL") || ns.toUpperCase().includes("DINAS")) return "APBD Tapsel";
+      if (s === "APBD_KABUPATEN" || ns.toUpperCase().includes("TAPSEL") || ns.toUpperCase().includes("DINAS") || ns.toUpperCase().includes("KABUPATEN")) return "APBD Kabupaten";
       if (s === "APBD_PROVINSI" || ns.toUpperCase().includes("PROVINSI")) return "APBD Provinsi";
-      if (s === "APBN" || ns.toUpperCase().includes("APBN") || ns.toUpperCase().includes("PUSAT")) return "APBN (Pusat)";
+      if (s === "APBN" || ns.toUpperCase().includes("APBN") || ns.toUpperCase().includes("PUSAT")) return "APBN";
       if (s === "DANA_DESA" || ns.toUpperCase().includes("DANA DESA") || ns.toUpperCase().includes("DESA")) return "Dana Desa";
       if (s === "SWADAYA" || ns.toUpperCase().includes("SWADAYA")) return "Swadaya";
       if (s === "BANTUAN_PEMERINTAH" || ns.toUpperCase().includes("DAK") || ns.toUpperCase().includes("BANTUAN")) return "Bantuan Pemerintah";
@@ -442,54 +436,48 @@ export async function GET(request: Request) {
 
     // 6b. Data Terbaru Pendanaan Usaha (100% Real Database)
     const pendanaanTerbaru: any[] = [];
-    if (allowPertanian) {
-      danaKebunDb.forEach((d: any) => {
-        pendanaanTerbaru.push({
-          id: `pk-${d.id}`,
-          namaPenerima: d.kebun?.kelompokTani?.nm_kelompok || d.kebun?.namaPemilik || d.kebun?.nama || "Kelompok Tani",
-          sektor: "Pertanian",
-          jenisUsaha: d.kebun?.komoditas?.nm_komoditas || d.kebun?.jenisTanaman || "Padi",
-          tahun: d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : 2026),
-          sumberDana: normalizeSumberDana(d.sumberDana, d.namaSumberDana),
-          sumberDanaRaw: d.sumberDana,
-          namaSumberDana: d.namaSumberDana || null,
-          nilaiBantuan: Number(d.danaDicairkan || d.danaDisetujui || d.danaDiajukan || 0),
-          createdAt: d.createdAt,
-        });
+    danaKebunDb.forEach((d: any) => {
+      pendanaanTerbaru.push({
+        id: `pk-${d.id}`,
+        namaPenerima: d.kebun?.kelompokTani?.nm_kelompok || d.kebun?.namaPemilik || d.kebun?.nama || "Kelompok Tani",
+        sektor: "Pertanian",
+        jenisUsaha: d.kebun?.komoditas?.nm_komoditas || d.kebun?.jenisTanaman || "Padi",
+        tahun: d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : 2026),
+        sumberDana: normalizeSumberDana(d.sumberDana, d.namaSumberDana),
+        sumberDanaRaw: d.sumberDana,
+        namaSumberDana: d.namaSumberDana || null,
+        nilaiBantuan: Number(d.danaDicairkan || d.danaDisetujui || d.danaDiajukan || 0),
+        createdAt: d.createdAt,
       });
-    }
-    if (allowPerikanan) {
-      danaKolamDb.forEach((d: any) => {
-        pendanaanTerbaru.push({
-          id: `pl-${d.id}`,
-          namaPenerima: d.kolam?.kelompokTani?.nm_kelompok || d.kolam?.namaPemilik || d.kolam?.nm_kolam || "Pokdakan",
-          sektor: "Perikanan",
-          jenisUsaha: d.kolam?.komoditas?.nm_komoditas || "Budidaya Ikan",
-          tahun: d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : 2026),
-          sumberDana: normalizeSumberDana(d.sumberDana, d.namaSumberDana),
-          sumberDanaRaw: d.sumberDana,
-          namaSumberDana: d.namaSumberDana || null,
-          nilaiBantuan: Number(d.danaDicairkan || d.danaDisetujui || d.danaDiajukan || 0),
-          createdAt: d.createdAt,
-        });
+    });
+    danaKolamDb.forEach((d: any) => {
+      pendanaanTerbaru.push({
+        id: `pl-${d.id}`,
+        namaPenerima: d.kolam?.kelompokTani?.nm_kelompok || d.kolam?.namaPemilik || d.kolam?.nm_kolam || "Pokdakan",
+        sektor: "Perikanan",
+        jenisUsaha: d.kolam?.komoditas?.nm_komoditas || "Budidaya Ikan",
+        tahun: d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : 2026),
+        sumberDana: normalizeSumberDana(d.sumberDana, d.namaSumberDana),
+        sumberDanaRaw: d.sumberDana,
+        namaSumberDana: d.namaSumberDana || null,
+        nilaiBantuan: Number(d.danaDicairkan || d.danaDisetujui || d.danaDiajukan || 0),
+        createdAt: d.createdAt,
       });
-    }
-    if (allowPeternakan) {
-      danaTernakDb.forEach((d: any) => {
-        pendanaanTerbaru.push({
-          id: `pt-${d.id}`,
-          namaPenerima: d.peternakan?.kelompokTani?.nm_kelompok || d.peternakan?.namaPemilik || d.peternakan?.nm_peternakan || "Kelompok Ternak",
-          sektor: "Peternakan",
-          jenisUsaha: d.peternakan?.komoditas?.nm_komoditas || "Sapi Potong",
-          tahun: d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : 2026),
-          sumberDana: normalizeSumberDana(d.sumberDana, d.namaSumberDana),
-          sumberDanaRaw: d.sumberDana,
-          namaSumberDana: d.namaSumberDana || null,
-          nilaiBantuan: Number(d.danaDicairkan || d.danaDisetujui || d.danaDiajukan || 0),
-          createdAt: d.createdAt,
-        });
+    });
+    danaTernakDb.forEach((d: any) => {
+      pendanaanTerbaru.push({
+        id: `pt-${d.id}`,
+        namaPenerima: d.peternakan?.kelompokTani?.nm_kelompok || d.peternakan?.namaPemilik || d.peternakan?.nm_peternakan || "Kelompok Ternak",
+        sektor: "Peternakan",
+        jenisUsaha: d.peternakan?.komoditas?.nm_komoditas || "Sapi Potong",
+        tahun: d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : 2026),
+        sumberDana: normalizeSumberDana(d.sumberDana, d.namaSumberDana),
+        sumberDanaRaw: d.sumberDana,
+        namaSumberDana: d.namaSumberDana || null,
+        nilaiBantuan: Number(d.danaDicairkan || d.danaDisetujui || d.danaDiajukan || 0),
+        createdAt: d.createdAt,
       });
-    }
+    });
 
     // Urutkan data berdasarkan tahun anggaran terbaru, lalu waktu pencatatan
     pendanaanTerbaru.sort((a, b) => {

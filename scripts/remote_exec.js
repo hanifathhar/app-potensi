@@ -10,7 +10,7 @@ function connectBastion() {
       port: 22,
       username: 'root',
       password: '@#Tim1t42026',
-      readyTimeout: 10000,
+      readyTimeout: 25000,
     });
   });
 }

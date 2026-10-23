@@ -762,7 +762,7 @@ export default function DashboardTaniTapselPage() {
             <KomposisiPendanaanSection
               data={data?.pendanaanTerbaru}
               loading={loading}
-              sector={isPerikananAdmin ? "Perikanan" : isPertanianAdmin ? "Pertanian" : "Semua"}
+              sector="Semua"
             />
           </div>
         </div>
