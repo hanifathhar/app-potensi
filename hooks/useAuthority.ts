@@ -90,14 +90,16 @@ export function useAuthority() {
   const canChangeKecamatan = isKabupaten;
   const canChangeDesa = isKabupaten || isKecamatan || isPpl || !isLockedDesa;
 
-  // Rule 1 & 2: Akses sektor
+  // Akses sektor sesuai role:
+  // - Admin Pertanian: Pertanian dan Peternakan
+  // - Admin Perikanan: Perikanan saja
   const canAccessSector = (sector: "pertanian" | "perikanan" | "peternakan") => {
-    if (isPertanianAdmin) return sector !== "perikanan";
+    if (isPertanianAdmin) return sector === "pertanian" || sector === "peternakan";
     if (isPerikananAdmin) return sector === "perikanan";
     return true;
   };
 
-  // Rule 1, 2, 3: Otoritas input, edit, dan hapus data
+  // Otoritas input, edit, dan hapus data
   const canEditOrDeleteRecord = (
     itemKecamatan?: string | null,
     itemDesa?: string | null,
@@ -105,7 +107,7 @@ export function useAuthority() {
   ) => {
     if (sector && !canAccessSector(sector)) return false;
     if (isMasterDataAdmin) return true;
-    if (isPertanianAdmin) return sector !== "perikanan";
+    if (isPertanianAdmin) return sector === "pertanian" || sector === "peternakan";
     if (isPerikananAdmin) return sector === "perikanan";
     if (isKecamatan) return Boolean(itemKecamatan && itemKecamatan === authKecamatan);
 

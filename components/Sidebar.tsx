@@ -144,11 +144,11 @@ export default function Sidebar({
     },
   ];
 
-  // Rule 1 & 2: Filter menu sesuai peran Dinas Pertanian vs Perikanan
+  // Filter menu potensi sesuai peran:
+  // - Admin Dinas Pertanian: Usaha Pertanian dan Usaha Peternakan
+  // - Admin Dinas Perikanan: Hanya Usaha Perikanan
   const filteredPotensiItems = potensiItems.filter((item) => {
-    // Admin Dinas Pertanian: Tidak dapat mengakses data perikanan
     if (role === "ADMIN_PERTANIAN" && item.sector === "perikanan") return false;
-    // Admin Dinas Perikanan: Hanya bisa akses data perikanan
     if (role === "ADMIN_PERIKANAN" && item.sector !== "perikanan") return false;
     return true;
   });

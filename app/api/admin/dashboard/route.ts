@@ -434,50 +434,62 @@ export async function GET(request: Request) {
       return ns || s || "Lainnya";
     };
 
-    // 6b. Data Terbaru Pendanaan Usaha (100% Real Database)
+    // 6b. Data Terbaru Pendanaan Usaha (100% Real Database sesuai role user)
+    // - Admin Dinas Pertanian: Data Pertanian dan Peternakan
+    // - Admin Dinas Perikanan: Data Perikanan
+    // - Superadmin / Admin Kabupaten: Semua data
     const pendanaanTerbaru: any[] = [];
-    danaKebunDb.forEach((d: any) => {
-      pendanaanTerbaru.push({
-        id: `pk-${d.id}`,
-        namaPenerima: d.kebun?.kelompokTani?.nm_kelompok || d.kebun?.namaPemilik || d.kebun?.nama || "Kelompok Tani",
-        sektor: "Pertanian",
-        jenisUsaha: d.kebun?.komoditas?.nm_komoditas || d.kebun?.jenisTanaman || "Padi",
-        tahun: d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : 2026),
-        sumberDana: normalizeSumberDana(d.sumberDana, d.namaSumberDana),
-        sumberDanaRaw: d.sumberDana,
-        namaSumberDana: d.namaSumberDana || null,
-        nilaiBantuan: Number(d.danaDicairkan || d.danaDisetujui || d.danaDiajukan || 0),
-        createdAt: d.createdAt,
+    if (allowPertanian) {
+      danaKebunDb.forEach((d: any) => {
+        pendanaanTerbaru.push({
+          id: `pk-${d.id}`,
+          namaPenerima: d.kebun?.kelompokTani?.nm_kelompok || d.kebun?.namaPemilik || d.kebun?.nama || "Kelompok Tani",
+          sektor: "Pertanian",
+          jenisUsaha: d.kebun?.komoditas?.nm_komoditas || d.kebun?.jenisTanaman || "Padi",
+          tahun: d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : 2026),
+          sumberDana: normalizeSumberDana(d.sumberDana, d.namaSumberDana),
+          sumberDanaRaw: d.sumberDana,
+          namaSumberDana: d.namaSumberDana || null,
+          nilaiBantuan: Number(d.danaDicairkan || 0),
+          danaDicairkan: Number(d.danaDicairkan || 0),
+          createdAt: d.createdAt,
+        });
       });
-    });
-    danaKolamDb.forEach((d: any) => {
-      pendanaanTerbaru.push({
-        id: `pl-${d.id}`,
-        namaPenerima: d.kolam?.kelompokTani?.nm_kelompok || d.kolam?.namaPemilik || d.kolam?.nm_kolam || "Pokdakan",
-        sektor: "Perikanan",
-        jenisUsaha: d.kolam?.komoditas?.nm_komoditas || "Budidaya Ikan",
-        tahun: d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : 2026),
-        sumberDana: normalizeSumberDana(d.sumberDana, d.namaSumberDana),
-        sumberDanaRaw: d.sumberDana,
-        namaSumberDana: d.namaSumberDana || null,
-        nilaiBantuan: Number(d.danaDicairkan || d.danaDisetujui || d.danaDiajukan || 0),
-        createdAt: d.createdAt,
+    }
+    if (allowPerikanan) {
+      danaKolamDb.forEach((d: any) => {
+        pendanaanTerbaru.push({
+          id: `pl-${d.id}`,
+          namaPenerima: d.kolam?.kelompokTani?.nm_kelompok || d.kolam?.namaPemilik || d.kolam?.nm_kolam || "Pokdakan",
+          sektor: "Perikanan",
+          jenisUsaha: d.kolam?.komoditas?.nm_komoditas || "Budidaya Ikan",
+          tahun: d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : 2026),
+          sumberDana: normalizeSumberDana(d.sumberDana, d.namaSumberDana),
+          sumberDanaRaw: d.sumberDana,
+          namaSumberDana: d.namaSumberDana || null,
+          nilaiBantuan: Number(d.danaDicairkan || 0),
+          danaDicairkan: Number(d.danaDicairkan || 0),
+          createdAt: d.createdAt,
+        });
       });
-    });
-    danaTernakDb.forEach((d: any) => {
-      pendanaanTerbaru.push({
-        id: `pt-${d.id}`,
-        namaPenerima: d.peternakan?.kelompokTani?.nm_kelompok || d.peternakan?.namaPemilik || d.peternakan?.nm_peternakan || "Kelompok Ternak",
-        sektor: "Peternakan",
-        jenisUsaha: d.peternakan?.komoditas?.nm_komoditas || "Sapi Potong",
-        tahun: d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : 2026),
-        sumberDana: normalizeSumberDana(d.sumberDana, d.namaSumberDana),
-        sumberDanaRaw: d.sumberDana,
-        namaSumberDana: d.namaSumberDana || null,
-        nilaiBantuan: Number(d.danaDicairkan || d.danaDisetujui || d.danaDiajukan || 0),
-        createdAt: d.createdAt,
+    }
+    if (allowPeternakan) {
+      danaTernakDb.forEach((d: any) => {
+        pendanaanTerbaru.push({
+          id: `pt-${d.id}`,
+          namaPenerima: d.peternakan?.kelompokTani?.nm_kelompok || d.peternakan?.namaPemilik || d.peternakan?.nm_peternakan || "Kelompok Ternak",
+          sektor: "Peternakan",
+          jenisUsaha: d.peternakan?.komoditas?.nm_komoditas || "Sapi Potong",
+          tahun: d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : 2026),
+          sumberDana: normalizeSumberDana(d.sumberDana, d.namaSumberDana),
+          sumberDanaRaw: d.sumberDana,
+          namaSumberDana: d.namaSumberDana || null,
+          nilaiBantuan: Number(d.danaDicairkan || 0),
+          danaDicairkan: Number(d.danaDicairkan || 0),
+          createdAt: d.createdAt,
+        });
       });
-    });
+    }
 
     // Urutkan data berdasarkan tahun anggaran terbaru, lalu waktu pencatatan
     pendanaanTerbaru.sort((a, b) => {

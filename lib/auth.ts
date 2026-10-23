@@ -73,12 +73,12 @@ export function canAccessSector(
   if (!user) return false;
   if (user.peran === "SUPERADMIN" || user.peran === "ADMIN_KABUPATEN") return true;
 
-  // Rule 1: Admin Dinas Pertanian TIDAK DAPAT mengakses data perikanan
+  // Admin Dinas Pertanian: Data Pertanian dan Peternakan
   if (user.peran === "ADMIN_PERTANIAN") {
-    return sector !== "perikanan";
+    return sector === "pertanian" || sector === "peternakan";
   }
 
-  // Rule 2: Admin Dinas Perikanan HANYA BISA akses data perikanan
+  // Admin Dinas Perikanan: Hanya bisa akses data perikanan
   if (user.peran === "ADMIN_PERIKANAN") {
     return sector === "perikanan";
   }

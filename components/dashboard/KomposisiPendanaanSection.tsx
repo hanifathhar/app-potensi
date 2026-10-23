@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
-import { ChevronDown, Users, CheckCircle2, ShieldCheck, Award } from "lucide-react";
+import { ChevronDown, Users, CheckCircle2 } from "lucide-react";
 
 export interface PendanaanItem {
   id?: string | number;
@@ -14,6 +14,7 @@ export interface PendanaanItem {
   sumberDanaRaw?: string;
   namaSumberDana?: string | null;
   nilaiBantuan: number;
+  danaDicairkan?: number;
 }
 
 interface KomposisiPendanaanSectionProps {
@@ -50,17 +51,7 @@ const SOURCE_COLORS: Record<string, string> = {
   "Lainnya": PALETTE.DEFAULT,
 };
 
-// Estimasi nilai bantuan per paket fisik jika di database nominal tunai belum diinput (in-kind bantuan)
-const ESTIMASI_PAKET_BANTUAN: Record<string, number> = {
-  "APBD Kabupaten": 15_000_000,
-  "APBD Provinsi": 20_000_000,
-  "APBN": 25_000_000,
-  "DAK": 18_000_000,
-  "Dana Desa": 10_000_000,
-  DEFAULT: 15_000_000,
-};
-
-// Format nominal rupiah singkat: Rp125 jt, Rp405 jt, Rp1.2 M
+// Format nominal rupiah singkat: Rp0, Rp125 jt, Rp405 jt, Rp1.2 M
 const formatRupiahShort = (val: number): string => {
   if (!val || val === 0) return "Rp0";
   if (val >= 1_000_000_000) {
@@ -101,14 +92,13 @@ export default function KomposisiPendanaanSection({
   loading = false,
   sector = "Semua",
 }: KomposisiPendanaanSectionProps) {
-  // 1. Filter data berdasarkan sektor (fallback ke data utuh jika sektor kosong agar dashboard tidak blank)
+  // 1. Filter data berdasarkan sektor
   const sectorFiltered = useMemo(() => {
     if (!data || data.length === 0) return [];
     if (sector === "Semua") return data;
-    const filtered = data.filter(
+    return data.filter(
       (item) => item.sektor?.toLowerCase() === sector.toLowerCase()
     );
-    return filtered.length > 0 ? filtered : data;
   }, [data, sector]);
 
   // 2. Daftar tahun unik dari data riil database
@@ -141,7 +131,7 @@ export default function KomposisiPendanaanSection({
     );
   }, [sectorFiltered, selectedTahun]);
 
-  // 4. Kalkulasi Agregasi 100% Data Riil Database
+  // 4. Kalkulasi Agregasi dari Database (Nilai murni dari field danaDicairkan)
   const { items, totalDana, totalPenerima } = useMemo(() => {
     const sourceMap = new Map<string, { rawName: string; count: number; totalNilai: number }>();
 
@@ -149,7 +139,9 @@ export default function KomposisiPendanaanSection({
       const src = getCleanSourceName(item.sumberDana || item.namaSumberDana || item.sumberDanaRaw);
       const existing = sourceMap.get(src) || { rawName: src, count: 0, totalNilai: 0 };
       existing.count += 1;
-      existing.totalNilai += Number(item.nilaiBantuan || 0);
+      // Nilai bantuan murni diambil dari field danaDicairkan
+      const cair = Number(item.danaDicairkan ?? item.nilaiBantuan ?? 0);
+      existing.totalNilai += cair;
       sourceMap.set(src, existing);
     });
 
@@ -158,25 +150,13 @@ export default function KomposisiPendanaanSection({
       return {
         name,
         color,
-        nilai: val.totalNilai,
+        nilai: val.totalNilai, // 100% dari field danaDicairkan database
         penerima: val.count,
         percentage: 0,
+        // pieSlice: bobot slice grafik (jika danaDicairkan = 0, pakai jumlah penerima agar grafik tetap terbagi proporsional)
+        pieSlice: val.totalNilai > 0 ? val.totalNilai : val.count,
       };
     });
-
-    const grandTotalNilai = aggregated.reduce((acc, curr) => acc + curr.nilai, 0);
-
-    // Jika nominal tunai di database 0 (karena bantuan berupa fisik bibit/pakan/barang),
-    // hitung proporsi nominal paket bantuan standar per unit usaha
-    if (grandTotalNilai === 0 && aggregated.length > 0) {
-      aggregated = aggregated.map((it) => {
-        const paketRate = ESTIMASI_PAKET_BANTUAN[it.name] || ESTIMASI_PAKET_BANTUAN.DEFAULT;
-        return {
-          ...it,
-          nilai: it.penerima * paketRate,
-        };
-      });
-    }
 
     // Urutkan sumber dana: APBD Kabupaten, APBD Provinsi, APBN, DAK, Dana Desa
     const priorityOrder = ["APBD Kabupaten", "APBD Provinsi", "APBN", "DAK", "Dana Desa"];
@@ -245,15 +225,15 @@ export default function KomposisiPendanaanSection({
                   Persentase Nilai Pendanaan
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-                  Komposisi alokasi dana bantuan
+                  Realisasi dana dicairkan per sumber dana
                 </p>
               </div>
               <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                Data Database
+                Dana Dicairkan
               </span>
             </div>
 
-            {/* Donut Chart dengan Total Dana di Tengah */}
+            {/* Donut Chart dengan Total Dana Dicairkan di Tengah */}
             <div className="relative h-[240px] w-full flex items-center justify-center my-2">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -269,11 +249,11 @@ export default function KomposisiPendanaanSection({
                                 style={{ backgroundColor: item.payload.color }}
                               />
                               <span className="font-bold text-slate-900">
-                                {item.name}
+                                {item.payload.name}
                               </span>
                             </div>
                             <div className="text-slate-700 font-semibold">
-                              {formatRupiahShort(item.value)}{" "}
+                              {formatRupiahShort(item.payload.nilai)}{" "}
                               <span className="text-slate-400 font-normal">
                                 ({formatPercentIndo(item.payload.percentage)})
                               </span>
@@ -289,7 +269,7 @@ export default function KomposisiPendanaanSection({
                   />
                   <Pie
                     data={items}
-                    dataKey="nilai"
+                    dataKey="pieSlice"
                     nameKey="name"
                     cx="50%"
                     cy="50%"
@@ -308,10 +288,10 @@ export default function KomposisiPendanaanSection({
                 </PieChart>
               </ResponsiveContainer>
 
-              {/* Teks di Tengah Donut Chart: Total Dana & Nilai */}
+              {/* Teks di Tengah Donut Chart: Total Dana Dicairkan */}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <span className="text-xs sm:text-sm font-medium text-slate-500 tracking-tight">
-                  Total Dana
+                  Dana Dicairkan
                 </span>
                 <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-0.5">
                   {formatRupiahShort(totalDana)}
@@ -339,9 +319,14 @@ export default function KomposisiPendanaanSection({
                     ({item.penerima} Unit Usaha)
                   </span>
                 </div>
-                <span className="font-bold text-slate-900">
-                  {formatPercentIndo(item.percentage)}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-900">
+                    {formatRupiahShort(item.nilai)}
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    ({formatPercentIndo(item.percentage)})
+                  </span>
+                </div>
               </div>
             ))}
           </div>
@@ -359,7 +344,7 @@ export default function KomposisiPendanaanSection({
                   Rekapitulasi Sumber Dana
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5 mb-5">
-                  Nilai dana dan penerima aktif per sumber dana
+                  Dana dicairkan dan unit penerima per sumber dana
                 </p>
               </div>
             </div>
@@ -368,7 +353,7 @@ export default function KomposisiPendanaanSection({
             <div className="space-y-5">
               {items.map((item) => (
                 <div key={`rekap-${item.name}`} className="space-y-1.5">
-                  {/* Baris Atas: Nama Sumber Dana & Nilai Rupiah */}
+                  {/* Baris Atas: Nama Sumber Dana & Nilai Dana Dicairkan */}
                   <div className="flex items-center justify-between text-xs sm:text-sm">
                     <span className="font-bold text-slate-900">
                       {item.name}

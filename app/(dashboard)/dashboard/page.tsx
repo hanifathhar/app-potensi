@@ -100,9 +100,6 @@ export default function DashboardTaniTapselPage() {
         setActiveTab("perikanan");
       }
     } else if (isPertanianAdmin) {
-      if (activeSectorFilter === "kolam") {
-        setActiveSectorFilter("pertanian");
-      }
       if (activeTab === "perikanan") {
         setActiveTab("pertanian");
       }
