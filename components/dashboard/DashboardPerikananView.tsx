@@ -362,16 +362,19 @@ export default function DashboardPerikananView({
     ).size;
     const rataRata = uniquePenerima > 0 ? Math.round(totalDana / uniquePenerima) : 0;
 
-    // Grouping sumber dana
-    const sourceMap = new Map<string, number>();
+    // Grouping sumber dana dari data pendanaan riil
+    const sourceMap = new Map<string, { count: number; totalNilai: number }>();
     filteredPendanaan.forEach((p) => {
       const src = p.sumberDana || "Lainnya";
-      sourceMap.set(src, (sourceMap.get(src) || 0) + Number(p.bantuan || 0));
+      const existing = sourceMap.get(src) || { count: 0, totalNilai: 0 };
+      existing.count += 1;
+      existing.totalNilai += Number(p.bantuan || 0);
+      sourceMap.set(src, existing);
     });
 
     const sourceColorMap: Record<string, string> = {
       "APBD Kabupaten": "#16a34a",
-      "APBN": "#0284c7",
+      "APBN": "#ef4444",
       "APBN / DAK": "#0284c7",
       "DAK": "#0284c7",
       "Bantuan Pemerintah": "#0284c7",
@@ -386,22 +389,13 @@ export default function DashboardPerikananView({
       "Lainnya": "#64748b",
     };
 
-    let komposisi = Array.from(sourceMap.entries()).map(([nama, nilai]) => ({
+    const komposisi = Array.from(sourceMap.entries()).map(([nama, val]) => ({
       nama,
-      totalNilai: nilai,
-      percentage: totalDana > 0 ? Number(((nilai / totalDana) * 100).toFixed(1)) : 0,
+      totalNilai: val.totalNilai,
+      count: val.count,
+      percentage: totalDana > 0 ? Number(((val.totalNilai / totalDana) * 100).toFixed(1)) : 0,
       color: sourceColorMap[nama] || "#0284c7",
-    })).sort((a, b) => b.totalNilai - a.totalNilai);
-
-    if (komposisi.length === 0) {
-      komposisi = detail.pendanaanKomposisi || [
-        { nama: "APBD Kabupaten", percentage: 40, color: "#16a34a" },
-        { nama: "APBN / DAK", percentage: 25, color: "#0284c7" },
-        { nama: "Provinsi", percentage: 15, color: "#eab308" },
-        { nama: "CSR / Swasta", percentage: 10, color: "#8b5cf6" },
-        { nama: "Lainnya", percentage: 10, color: "#64748b" },
-      ];
-    }
+    })).sort((a, b) => b.totalNilai - a.totalNilai || b.count - a.count);
 
     const formatShort = (val: number) => {
       if (val >= 1_000_000_000) {
@@ -580,17 +574,13 @@ export default function DashboardPerikananView({
               className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight truncate"
               title={dynamicPendanaanStats.displayTotalFull}
             >
-              {dynamicPendanaanStats.totalDana > 0
-                ? dynamicPendanaanStats.displayTotalFull
-                : "Rp 6.480.000.000"}
+              {dynamicPendanaanStats.displayTotalFull}
             </div>
             <div className="text-xs font-semibold text-slate-500 mt-0.5">
-              {dynamicPendanaanStats.totalPenerima > 0
-                ? `${dynamicPendanaanStats.totalPenerima} penerima`
-                : "87 penerima"}
+              {dynamicPendanaanStats.totalPenerima} penerima
             </div>
             <div className="mt-2 flex items-center gap-1 text-xs font-bold text-emerald-600">
-              <span>{detail.growthPendanaan || "↑ 15% dibanding tahun lalu"}</span>
+              <span>{detail.growthPendanaan || `Tahun Anggaran ${selectedTahun === "semua" ? "Semua" : selectedTahun}`}</span>
             </div>
           </div>
         </div>
@@ -921,20 +911,28 @@ export default function DashboardPerikananView({
                       formatter={(val: any, name: any) => [`${val}%`, name]}
                     />
                     <Pie
-                      data={dynamicPendanaanStats.komposisi}
+                      data={
+                        dynamicPendanaanStats.totalDana > 0
+                          ? dynamicPendanaanStats.komposisi
+                          : [{ nama: "Belum Ada Realisasi", percentage: 100, color: "#e2e8f0" }]
+                      }
                       dataKey="percentage"
                       nameKey="nama"
                       cx="50%"
                       cy="50%"
                       innerRadius={36}
                       outerRadius={56}
-                      paddingAngle={3}
+                      paddingAngle={dynamicPendanaanStats.totalDana > 0 ? 3 : 0}
                       stroke="#ffffff"
                       strokeWidth={2}
                     >
-                      {dynamicPendanaanStats.komposisi.map((entry: any, index: number) => (
-                        <Cell key={`cell-dana-klm-${index}`} fill={entry.color} />
-                      ))}
+                      {dynamicPendanaanStats.totalDana > 0 ? (
+                        dynamicPendanaanStats.komposisi.map((entry: any, index: number) => (
+                          <Cell key={`cell-dana-klm-${index}`} fill={entry.color} />
+                        ))
+                      ) : (
+                        <Cell fill="#e2e8f0" />
+                      )}
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
@@ -942,9 +940,7 @@ export default function DashboardPerikananView({
                 {/* Absolute Center Text */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <span className="text-xs font-black text-slate-900 tracking-tight leading-none text-center px-1 truncate max-w-[70px]">
-                    {dynamicPendanaanStats.totalDana > 0
-                      ? dynamicPendanaanStats.displayTotalShort
-                      : "Rp 6,48 M"}
+                    {dynamicPendanaanStats.displayTotalShort || "Rp 0"}
                   </span>
                   <span className="text-[9px] font-semibold text-slate-500 mt-0.5">
                     Total Bantuan
@@ -954,25 +950,31 @@ export default function DashboardPerikananView({
 
               {/* Legend List (7 Cols) */}
               <div className="sm:col-span-7 space-y-1 py-1 max-h-[140px] overflow-y-auto">
-                {dynamicPendanaanStats.komposisi.map((item: any) => (
-                  <div
-                    key={item.nama}
-                    className="flex items-center justify-between text-[11px] py-0.5 px-1 rounded-md hover:bg-slate-50 transition"
-                  >
-                    <div className="flex items-center gap-1.5 truncate pr-1">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <span className="font-semibold text-slate-700 truncate">
-                        {item.nama}
+                {dynamicPendanaanStats.komposisi.length > 0 ? (
+                  dynamicPendanaanStats.komposisi.map((item: any) => (
+                    <div
+                      key={item.nama}
+                      className="flex items-center justify-between text-[11px] py-0.5 px-1 rounded-md hover:bg-slate-50 transition"
+                    >
+                      <div className="flex items-center gap-1.5 truncate pr-1">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <span className="font-semibold text-slate-700 truncate" title={item.nama}>
+                          {item.nama}
+                        </span>
+                      </div>
+                      <span className="font-bold text-slate-900 tabular-nums">
+                        {item.percentage}%
                       </span>
                     </div>
-                    <span className="font-bold text-slate-900 tabular-nums">
-                      {item.percentage}%
-                    </span>
+                  ))
+                ) : (
+                  <div className="h-full flex items-center justify-center text-[11px] text-slate-400 py-4 text-center">
+                    Tidak ada data pendanaan {selectedTahun !== "semua" ? `tahun ${selectedTahun}` : ""}
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
@@ -985,9 +987,7 @@ export default function DashboardPerikananView({
                 </div>
                 <div>
                   <div className="text-lg font-black text-slate-900 tracking-tight leading-none">
-                    {dynamicPendanaanStats.totalPenerima > 0
-                      ? dynamicPendanaanStats.totalPenerima
-                      : "87"}
+                    {dynamicPendanaanStats.totalPenerima}
                   </div>
                   <span className="text-[10px] font-semibold text-slate-500 mt-0.5 block">
                     Penerima Bantuan
@@ -1003,15 +1003,9 @@ export default function DashboardPerikananView({
                 <div>
                   <div
                     className="text-xs font-black text-slate-900 tracking-tight leading-none truncate max-w-[100px]"
-                    title={
-                      dynamicPendanaanStats.totalDana > 0
-                        ? dynamicPendanaanStats.displayRataRata
-                        : "Rp 74.482.759"
-                    }
+                    title={dynamicPendanaanStats.displayRataRata}
                   >
-                    {dynamicPendanaanStats.totalDana > 0
-                      ? dynamicPendanaanStats.displayRataRata
-                      : "Rp 74.482.759"}
+                    {dynamicPendanaanStats.displayRataRata}
                   </div>
                   <span className="text-[9px] font-semibold text-slate-500 mt-0.5 block leading-tight">
                     Rata-rata bantuan

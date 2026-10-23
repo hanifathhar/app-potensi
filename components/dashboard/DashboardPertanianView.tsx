@@ -281,11 +281,14 @@ export default function DashboardPertanianView({
     const uniquePenerima = new Set(filteredPendanaan.map((p) => p.kd_kebun || p.id).filter(Boolean)).size;
     const rataRata = uniquePenerima > 0 ? Math.round(totalDana / uniquePenerima) : 0;
 
-    // Grouping sumber dana
-    const sourceMap = new Map<string, number>();
+    // Grouping sumber dana dari data pendanaan riil
+    const sourceMap = new Map<string, { count: number; totalNilai: number }>();
     filteredPendanaan.forEach((p) => {
       const src = p.sumberDana || "Lainnya";
-      sourceMap.set(src, (sourceMap.get(src) || 0) + Number(p.bantuan || 0));
+      const existing = sourceMap.get(src) || { count: 0, totalNilai: 0 };
+      existing.count += 1;
+      existing.totalNilai += Number(p.bantuan || 0);
+      sourceMap.set(src, existing);
     });
 
     const sourceColorMap: Record<string, string> = {
@@ -302,16 +305,13 @@ export default function DashboardPertanianView({
       "Lainnya": "#3b82f6",
     };
 
-    let komposisi = Array.from(sourceMap.entries()).map(([nama, nilai]) => ({
+    const komposisi = Array.from(sourceMap.entries()).map(([nama, val]) => ({
       nama,
-      totalNilai: nilai,
-      percentage: totalDana > 0 ? Number(((nilai / totalDana) * 100).toFixed(1)) : 0,
+      totalNilai: val.totalNilai,
+      count: val.count,
+      percentage: totalDana > 0 ? Number(((val.totalNilai / totalDana) * 100).toFixed(1)) : 0,
       color: sourceColorMap[nama] || "#3b82f6",
-    })).sort((a, b) => b.totalNilai - a.totalNilai);
-
-    if (komposisi.length === 0) {
-      komposisi = detail.pendanaanKomposisi || [];
-    }
+    })).sort((a, b) => b.totalNilai - a.totalNilai || b.count - a.count);
 
     const formatShort = (val: number) => {
       if (val >= 1_000_000_000) {
@@ -762,20 +762,28 @@ export default function DashboardPertanianView({
                         formatter={(val: any, name: any) => [`${val}%`, name]}
                       />
                       <Pie
-                        data={dynamicPendanaanStats.komposisi}
+                        data={
+                          dynamicPendanaanStats.totalDana > 0
+                            ? dynamicPendanaanStats.komposisi
+                            : [{ nama: "Belum Ada Realisasi", percentage: 100, color: "#e2e8f0" }]
+                        }
                         dataKey="percentage"
                         nameKey="nama"
                         cx="50%"
                         cy="50%"
                         innerRadius={46}
                         outerRadius={68}
-                        paddingAngle={3}
+                        paddingAngle={dynamicPendanaanStats.totalDana > 0 ? 3 : 0}
                         stroke="#ffffff"
                         strokeWidth={2}
                       >
-                        {dynamicPendanaanStats.komposisi.map((entry: any, index: number) => (
-                          <Cell key={`cell-dana-${index}`} fill={entry.color} />
-                        ))}
+                        {dynamicPendanaanStats.totalDana > 0 ? (
+                          dynamicPendanaanStats.komposisi.map((entry: any, index: number) => (
+                            <Cell key={`cell-dana-${index}`} fill={entry.color} />
+                          ))
+                        ) : (
+                          <Cell fill="#e2e8f0" />
+                        )}
                       </Pie>
                     </PieChart>
                   </ResponsiveContainer>
@@ -793,25 +801,31 @@ export default function DashboardPertanianView({
 
                 {/* Legend List */}
                 <div className="flex-1 w-full space-y-2 py-1 max-h-[160px] overflow-y-auto">
-                  {dynamicPendanaanStats.komposisi.map((item: any) => (
-                    <div
-                      key={item.nama}
-                      className="flex items-center justify-between text-xs py-0.5 px-1 rounded-md hover:bg-slate-50 transition"
-                    >
-                      <div className="flex items-center gap-2 truncate pr-1">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        <span className="font-semibold text-slate-700 truncate">
-                          {item.nama}
+                  {dynamicPendanaanStats.komposisi.length > 0 ? (
+                    dynamicPendanaanStats.komposisi.map((item: any) => (
+                      <div
+                        key={item.nama}
+                        className="flex items-center justify-between text-xs py-0.5 px-1 rounded-md hover:bg-slate-50 transition"
+                      >
+                        <div className="flex items-center gap-2 truncate pr-1">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          <span className="font-semibold text-slate-700 truncate" title={item.nama}>
+                            {item.nama}
+                          </span>
+                        </div>
+                        <span className="font-bold text-slate-900 tabular-nums">
+                          {item.percentage}%
                         </span>
                       </div>
-                      <span className="font-bold text-slate-900 tabular-nums">
-                        {item.percentage}%
-                      </span>
+                    ))
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-xs text-slate-400 py-4 text-center">
+                      Tidak ada data pendanaan {selectedTahun !== "semua" ? `tahun ${selectedTahun}` : ""}
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 

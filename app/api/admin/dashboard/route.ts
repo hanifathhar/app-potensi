@@ -321,7 +321,7 @@ export async function GET(request: Request) {
 
     const sumPendanaanCairTahunIni = pendanaanTahunIni.reduce((acc, curr) => acc + curr.cair, 0);
     const sumPendanaanPaguTahunIni = pendanaanTahunIni.reduce((acc, curr) => acc + curr.pagu, 0);
-    const totalPendanaanTahunIni = sumPendanaanCairTahunIni > 0 ? sumPendanaanCairTahunIni : sumPendanaanPaguTahunIni;
+    const totalPendanaanTahunIni = sumPendanaanCairTahunIni;
 
     const formatCurrencyDisplay = (val: number) => {
       if (val >= 1_000_000_000) {
@@ -828,7 +828,7 @@ export async function GET(request: Request) {
 
     // Real Pendanaan Khusus Pertanian
     const totalDanaKebun = danaKebunDb.reduce(
-      (acc: number, curr: any) => acc + Number(curr.danaDicairkan || curr.danaDiajukan || 0),
+      (acc: number, curr: any) => acc + Number(curr.danaDicairkan || 0),
       0
     );
     const uniquePenerimaKebun = new Set(
@@ -913,7 +913,7 @@ export async function GET(request: Request) {
     // Hitung total dan penerima untuk tahun terkini
     const targetDanaList = danaKebunTerkini.length > 0 ? danaKebunTerkini : danaKebunDb;
     const totalDanaKebunTerkini = targetDanaList.reduce(
-      (acc: number, curr: any) => acc + Number(curr.danaDicairkan || curr.danaDiajukan || 0),
+      (acc: number, curr: any) => acc + Number(curr.danaDicairkan || 0),
       0
     );
     const uniquePenerimaTerkini = new Set(
@@ -926,7 +926,7 @@ export async function GET(request: Request) {
       const src = normalizeSumberDana(d.sumberDana, d.namaSumberDana);
       const existing = danaSourceMap.get(src) || { count: 0, totalNilai: 0 };
       existing.count += 1;
-      existing.totalNilai += Number(d.danaDicairkan || d.danaDiajukan || 0);
+      existing.totalNilai += Number(d.danaDicairkan || 0);
       danaSourceMap.set(src, existing);
     });
 
@@ -955,22 +955,12 @@ export async function GET(request: Request) {
       };
     }).sort((a, b) => b.totalNilai - a.totalNilai);
 
-    if (pendanaanKomposisi.length === 0) {
-      pendanaanKomposisi = [
-        { nama: "APBD Kabupaten", totalNilai: 0, count: 0, percentage: 45, color: "#16a34a" },
-        { nama: "APBN", totalNilai: 0, count: 0, percentage: 25, color: "#ef4444" },
-        { nama: "Provinsi", totalNilai: 0, count: 0, percentage: 15, color: "#eab308" },
-        { nama: "CSR / Swasta", totalNilai: 0, count: 0, percentage: 10, color: "#8b5cf6" },
-        { nama: "Lainnya", totalNilai: 0, count: 0, percentage: 5, color: "#3b82f6" },
-      ];
-    }
-
     const rataRataPerPenerima = uniquePenerimaTerkini > 0 ? Math.round(totalDanaKebunTerkini / uniquePenerimaTerkini) : 0;
 
     // Seluruh catatan pendanaan dengan atribut tahun untuk filter dinamis client
     const rawPendanaanPertanian = danaKebunDb.map((d: any, idx: number) => {
       const yr = Number(d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : currentYearNum));
-      const nilai = Number(d.danaDicairkan || d.danaDiajukan || 0);
+      const nilai = Number(d.danaDicairkan || 0);
       return {
         no: idx + 1,
         id: d.id,
@@ -1253,7 +1243,7 @@ export async function GET(request: Request) {
     );
 
     const totalDanaKolamTerkini = targetDanaKolamList.reduce(
-      (acc: number, curr: any) => acc + Number(curr.danaDicairkan || curr.danaDiajukan || 0),
+      (acc: number, curr: any) => acc + Number(curr.danaDicairkan || 0),
       0
     );
     const uniquePenerimaKolamTerkini = new Set(
@@ -1265,7 +1255,7 @@ export async function GET(request: Request) {
       const src = normalizeSumberDana(d.sumberDana, d.namaSumberDana);
       const existing = danaSourceMapKolam.get(src) || { count: 0, totalNilai: 0 };
       existing.count += 1;
-      existing.totalNilai += Number(d.danaDicairkan || d.danaDiajukan || 0);
+      existing.totalNilai += Number(d.danaDicairkan || 0);
       danaSourceMapKolam.set(src, existing);
     });
 
@@ -1280,21 +1270,11 @@ export async function GET(request: Request) {
       };
     }).sort((a, b) => b.totalNilai - a.totalNilai);
 
-    if (pendanaanKomposisiKolam.length === 0) {
-      pendanaanKomposisiKolam = [
-        { nama: "APBD Kabupaten", totalNilai: 0, count: 0, percentage: 40, color: "#16a34a" },
-        { nama: "APBN / DAK", totalNilai: 0, count: 0, percentage: 25, color: "#0284c7" },
-        { nama: "Provinsi", totalNilai: 0, count: 0, percentage: 15, color: "#eab308" },
-        { nama: "CSR / Swasta", totalNilai: 0, count: 0, percentage: 10, color: "#8b5cf6" },
-        { nama: "Lainnya", totalNilai: 0, count: 0, percentage: 10, color: "#64748b" },
-      ];
-    }
-
     const rataRataPerPenerimaKolam = uniquePenerimaKolamTerkini > 0 ? Math.round(totalDanaKolamTerkini / uniquePenerimaKolamTerkini) : 0;
 
     const rawPendanaanPerikanan = danaKolamDb.map((d: any) => {
       const yr = Number(d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : currentYearNum));
-      const nilai = Number(d.danaDicairkan || d.danaDiajukan || 0);
+      const nilai = Number(d.danaDicairkan || 0);
       const rawKom = d.kolam?.komoditas?.nm_komoditas || "Ikan Air Tawar";
       const cleanKom = rawKom.replace(/^Budidaya\s+Ikan\s+/i, "");
       return {
@@ -1580,7 +1560,7 @@ export async function GET(request: Request) {
 
     const targetDanaTernakList = danaTernakTerkini.length > 0 ? danaTernakTerkini : danaTernakDb;
     const totalDanaTernakTerkini = targetDanaTernakList.reduce(
-      (acc: number, curr: any) => acc + Number(curr.danaDicairkan || curr.danaDiajukan || 0),
+      (acc: number, curr: any) => acc + Number(curr.danaDicairkan || 0),
       0
     );
     const uniquePenerimaTernakTerkini = new Set(
@@ -1592,7 +1572,7 @@ export async function GET(request: Request) {
       const src = normalizeSumberDana(d.sumberDana, d.namaSumberDana);
       const existing = danaSourceMapTernak.get(src) || { count: 0, totalNilai: 0 };
       existing.count += 1;
-      existing.totalNilai += Number(d.danaDicairkan || d.danaDiajukan || 0);
+      existing.totalNilai += Number(d.danaDicairkan || 0);
       danaSourceMapTernak.set(src, existing);
     });
 
@@ -1607,21 +1587,11 @@ export async function GET(request: Request) {
       };
     }).sort((a, b) => b.totalNilai - a.totalNilai);
 
-    if (pendanaanKomposisiTernak.length === 0) {
-      pendanaanKomposisiTernak = [
-        { nama: "APBD Kabupaten", totalNilai: 0, count: 0, percentage: 45, color: "#16a34a" },
-        { nama: "APBN", totalNilai: 0, count: 0, percentage: 25, color: "#ef4444" },
-        { nama: "Provinsi", totalNilai: 0, count: 0, percentage: 15, color: "#eab308" },
-        { nama: "CSR / Swasta", totalNilai: 0, count: 0, percentage: 10, color: "#8b5cf6" },
-        { nama: "Lainnya", totalNilai: 0, count: 0, percentage: 5, color: "#3b82f6" },
-      ];
-    }
-
     const rataRataPerPenerimaTernak = uniquePenerimaTernakTerkini > 0 ? Math.round(totalDanaTernakTerkini / uniquePenerimaTernakTerkini) : 0;
 
     const rawPendanaanPeternakan = danaTernakDb.map((d: any, idx: number) => {
       const yr = Number(d.tahunAnggaran || (d.createdAt ? new Date(d.createdAt).getFullYear() : currentYearNum));
-      const nilai = Number(d.danaDicairkan || d.danaDiajukan || 0);
+      const nilai = Number(d.danaDicairkan || 0);
       return {
         no: idx + 1,
         id: d.id,
