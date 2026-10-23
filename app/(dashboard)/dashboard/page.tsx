@@ -757,17 +757,13 @@ export default function DashboardTaniTapselPage() {
             />
           </div>
 
-          {/* D. INFORMASI PENDANAAN USAHA & FILTER */}
+          {/* D. KOMPOSISI PENDANAAN: DUA PANEL KANAN-KIRI (PERSENTASE & REKAPITULASI) */}
           <div className="w-full">
-            {isPertanianAdmin || isPerikananAdmin ? (
-              <KomposisiPendanaanSection
-                data={data?.pendanaanTerbaru}
-                loading={loading}
-                sector={isPerikananAdmin ? "Perikanan" : "Pertanian"}
-              />
-            ) : (
-              <PendanaanTerbaruSection data={data?.pendanaanTerbaru} loading={loading} />
-            )}
+            <KomposisiPendanaanSection
+              data={data?.pendanaanTerbaru}
+              loading={loading}
+              sector={isPerikananAdmin ? "Perikanan" : isPertanianAdmin ? "Pertanian" : "Semua"}
+            />
           </div>
         </div>
       )}

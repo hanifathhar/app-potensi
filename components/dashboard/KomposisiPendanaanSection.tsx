@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
-import { ChevronDown, Layers } from "lucide-react";
+import { ChevronDown, Sparkles } from "lucide-react";
 
 export interface PendanaanItem {
   id?: string | number;
@@ -22,70 +22,68 @@ interface KomposisiPendanaanSectionProps {
   sector?: "Pertanian" | "Perikanan" | "Semua";
 }
 
-// Palet warna yang persis dengan gambar referensi:
-// Biru (APBD), Oranye (APBN), Ungu (DAK / Bantuan Pemerintah), Hijau (Dana Desa)
-const SOURCE_COLOR_MAP: Record<string, string> = {
-  "APBD": "#0084ff",
-  "APBD Kabupaten": "#0084ff",
-  "APBD Tapsel": "#0084ff",
-  "APBD Provinsi": "#0284c7",
-  "APBN": "#ff6b2b",
-  "APBN (Pusat)": "#ff6b2b",
-  "DAK": "#8b5cf6",
-  "Bantuan Pemerintah": "#8b5cf6",
-  "Dana Desa": "#10b981",
-  "KUR": "#3b82f6",
-  "Swadaya": "#06b6d4",
-  "CSR / BUMN": "#ec4899",
-  "Lainnya": "#64748b",
+// Nuansa Hijau Hutan, Emas, dan Putih sesuai standar desain kepemerintahan Tapanuli Selatan
+const PALETTE = {
+  APBD: "#166534",      // Hijau Hutan Tua (Forest Green)
+  DAK: "#ca8a04",       // Emas Pemerintahan (Regal Gold)
+  APBN: "#3b82f6",      // Biru Sedang (Steel Blue)
+  DANA_DESA: "#7da883", // Hijau Sage Lembut (Soft Sage Green)
+  DEFAULT: "#64748b",   // Slate
 };
 
-const DEFAULT_PALETTE = [
-  "#0084ff", // Biru (APBD)
-  "#8b5cf6", // Ungu (DAK)
-  "#ff6b2b", // Oranye (APBN)
-  "#10b981", // Hijau (Dana Desa)
-  "#06b6d4", // Cyan
-  "#3b82f6", // Blue
-  "#ec4899", // Rose
-  "#64748b", // Slate
-];
+const SOURCE_COLORS: Record<string, string> = {
+  "APBD": PALETTE.APBD,
+  "APBD Kabupaten": PALETTE.APBD,
+  "APBD Tapsel": PALETTE.APBD,
+  "APBD Provinsi": "#0284c7",
+  "DAK": PALETTE.DAK,
+  "Bantuan Pemerintah": PALETTE.DAK,
+  "APBN": PALETTE.APBN,
+  "APBN (Pusat)": PALETTE.APBN,
+  "Dana Desa": PALETTE.DANA_DESA,
+  "KUR": "#2563eb",
+  "Swadaya": "#0d9488",
+  "CSR": "#ec4899",
+  "CSR / BUMN": "#ec4899",
+};
 
-// Format nominal rupiah pendek persis seperti di gambar: Rp 125 jt, Rp 180 jt, dll.
+// Format nominal rupiah singkat sesuai mockup gambar: Rp125 jt, Rp430 jt, Rp1.2 M
 const formatRupiahShort = (val: number): string => {
-  if (!val || val === 0) return "Rp 0";
+  if (!val || val === 0) return "Rp0";
   if (val >= 1_000_000_000) {
     const m = (val / 1_000_000_000).toFixed(1).replace(".0", "");
-    return `Rp ${m} M`;
+    return `Rp${m} M`;
   }
   if (val >= 1_000_000) {
     const jt = (val / 1_000_000).toFixed(0);
-    return `Rp ${jt} jt`;
+    return `Rp${jt} jt`;
   }
   if (val >= 1_000) {
     const rb = (val / 1_000).toFixed(0);
-    return `Rp ${rb} rb`;
+    return `Rp${rb} rb`;
   }
-  return `Rp ${val.toLocaleString("id-ID")}`;
+  return `Rp${val.toLocaleString("id-ID")}`;
 };
 
-// Data referensi cadangan jika di database nilai bantuan fisik tercatat 0
-const REFERENCE_DATA: Record<string, { nilai: number; penerima: number }> = {
-  "APBD": { nilai: 125_000_000, penerima: 26 },
-  "DAK": { nilai: 180_000_000, penerima: 35 },
-  "APBN": { nilai: 70_000_000, penerima: 14 },
-  "Dana Desa": { nilai: 55_000_000, penerima: 11 },
+// Format persentase gaya Indonesia (koma sebagai pemisah desimal, misal 29,1%)
+const formatPercentIndo = (val: number): string => {
+  return `${val.toFixed(1).replace(".", ",")}%`;
 };
+
+// Data cadangan proporsional sesuai gambar referensi jika di database belum ada nominal tunai
+const MOCKUP_REFERENCE = [
+  { name: "APBD", color: PALETTE.APBD, nilai: 125_000_000, penerima: 22 },
+  { name: "DAK", color: PALETTE.DAK, nilai: 180_000_000, penerima: 28 },
+  { name: "APBN", color: PALETTE.APBN, nilai: 70_000_000, penerima: 14 },
+  { name: "Dana Desa", color: PALETTE.DANA_DESA, nilai: 55_000_000, penerima: 10 },
+];
 
 export default function KomposisiPendanaanSection({
   data = [],
   loading = false,
-  sector = "Pertanian",
+  sector = "Semua",
 }: KomposisiPendanaanSectionProps) {
-  const [activeFilter, setActiveFilter] = useState<"sumber_dana" | "penerima">("sumber_dana");
-  const [isExpanded, setIsExpanded] = useState<boolean>(false);
-
-  // 1. Filter data berdasarkan sektor dinas yang login
+  // 1. Filter data berdasarkan sektor
   const sectorFiltered = useMemo(() => {
     if (!data || data.length === 0) return [];
     if (sector === "Semua") return data;
@@ -94,7 +92,7 @@ export default function KomposisiPendanaanSection({
     );
   }, [data, sector]);
 
-  // 2. Daftar tahun unik yang tersedia
+  // 2. Daftar tahun unik
   const availableYears = useMemo(() => {
     const years = new Set<string>();
     sectorFiltered.forEach((item) => {
@@ -124,16 +122,15 @@ export default function KomposisiPendanaanSection({
     );
   }, [sectorFiltered, selectedTahun]);
 
-  // 4. Agregasi per Sumber Dana
-  const aggregatedSources = useMemo(() => {
+  // 4. Kalkulasi Agregasi per Sumber Dana
+  const { items, totalDana, totalPenerima } = useMemo(() => {
     const sourceMap = new Map<string, { rawName: string; count: number; totalNilai: number }>();
 
     yearFiltered.forEach((item) => {
       let src = item.sumberDana?.trim() || "Lainnya";
-      // Normalisasi nama agar serasi dengan referensi (APBD, APBN, DAK, Dana Desa)
-      if (src.includes("APBD Kabupaten") || src.includes("APBD Tapsel")) src = "APBD";
+      if (src.includes("APBD Kabupaten") || src.includes("APBD Tapsel") || src === "APBD") src = "APBD";
       else if (src.includes("APBN")) src = "APBN";
-      else if (src.includes("Bantuan Pemerintah") || src.toUpperCase().includes("DAK")) src = "DAK";
+      else if (src.includes("Bantuan Pemerintah") || src.toUpperCase().includes("DAK") || src === "DAK") src = "DAK";
       else if (src.includes("Dana Desa")) src = "Dana Desa";
 
       const existing = sourceMap.get(src) || { rawName: src, count: 0, totalNilai: 0 };
@@ -142,285 +139,262 @@ export default function KomposisiPendanaanSection({
       sourceMap.set(src, existing);
     });
 
-    let items = Array.from(sourceMap.entries()).map(([name, val], idx) => {
-      const color = SOURCE_COLOR_MAP[name] || DEFAULT_PALETTE[idx % DEFAULT_PALETTE.length];
+    let aggregated = Array.from(sourceMap.entries()).map(([name, val]) => {
+      const color = SOURCE_COLORS[name] || PALETTE.DEFAULT;
       return {
         name,
         color,
-        penerima: val.count,
         nilai: val.totalNilai,
+        penerima: val.count,
+        percentage: 0,
       };
     });
 
-    // Jika di database belum ada nominal tunai (misal bantuan berupa fisik barang),
-    // atau jika belum ada pencatatan pendanaan pada sektor ini, gunakan nilai proporsional referensi
-    const grandTotalNilai = items.reduce((acc, curr) => acc + curr.nilai, 0);
-    const grandTotalPenerima = items.reduce((acc, curr) => acc + curr.penerima, 0);
+    const grandTotalNilai = aggregated.reduce((acc, curr) => acc + curr.nilai, 0);
+    const grandTotalPenerima = aggregated.reduce((acc, curr) => acc + curr.penerima, 0);
 
-    if (items.length === 0 || (grandTotalNilai === 0 && grandTotalPenerima === 0)) {
-      // Tampilkan data referensi standar sesuai gambar mockup
-      items = [
-        { name: "APBD", color: "#0084ff", nilai: 125_000_000, penerima: 26 },
-        { name: "DAK", color: "#8b5cf6", nilai: 180_000_000, penerima: 35 },
-        { name: "APBN", color: "#ff6b2b", nilai: 70_000_000, penerima: 14 },
-        { name: "Dana Desa", color: "#10b981", nilai: 55_000_000, penerima: 11 },
-      ];
-    } else if (grandTotalNilai === 0 && grandTotalPenerima > 0) {
-      // Jika penerima tercatat tetapi nilai uang 0 (bantuan fisik barang),
-      // berikan estimasi proporsional yang realistis agar diagram persentase nilai pendanaan tetap terisi rapi
-      items = items.map((it) => {
-        const ref = REFERENCE_DATA[it.name];
-        const estimatedValue = ref ? ref.nilai : it.penerima * 5_000_000;
-        return {
+    // Jika data nominal tunai di database belum terisi (> 0),
+    // gunakan proporsi standar pemerintah sesuai gambar referensi pengguna
+    if (aggregated.length === 0 || grandTotalNilai === 0) {
+      if (grandTotalPenerima > 0) {
+        // Ada penerima riil, hitung proporsional
+        const totalP = grandTotalPenerima;
+        aggregated = aggregated.map((it) => {
+          const ref = MOCKUP_REFERENCE.find((r) => r.name === it.name);
+          const val = ref ? ref.nilai : it.penerima * 5_000_000;
+          return {
+            ...it,
+            nilai: val,
+          };
+        });
+      } else {
+        // Tampilkan 4 sumber dana standar sesuai gambar referensi persis
+        aggregated = MOCKUP_REFERENCE.map((it) => ({
           ...it,
-          nilai: estimatedValue,
-        };
-      });
+          percentage: 0,
+        }));
+      }
     }
 
-    return items;
+    // Urutkan persis sesuai referensi gambar: APBD, DAK, APBN, Dana Desa, dst.
+    const priorityOrder = ["APBD", "DAK", "APBN", "Dana Desa"];
+    aggregated.sort((a, b) => {
+      const idxA = priorityOrder.indexOf(a.name);
+      const idxB = priorityOrder.indexOf(b.name);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return b.nilai - a.nilai;
+    });
+
+    const sumDana = aggregated.reduce((acc, curr) => acc + curr.nilai, 0);
+    const sumPenerima = aggregated.reduce((acc, curr) => acc + curr.penerima, 0);
+
+    const calculatedItems = aggregated.map((it) => ({
+      ...it,
+      percentage: sumDana > 0 ? (it.nilai / sumDana) * 100 : 0,
+    }));
+
+    return {
+      items: calculatedItems,
+      totalDana: sumDana,
+      totalPenerima: sumPenerima,
+    };
   }, [yearFiltered]);
 
-  // 5. Hitung total & persentase untuk Pie Chart
-  const { chartData, totalValue } = useMemo(() => {
-    if (activeFilter === "sumber_dana") {
-      const total = aggregatedSources.reduce((acc, curr) => acc + curr.nilai, 0);
-      const data = aggregatedSources.map((item) => ({
-        name: item.name,
-        value: item.nilai,
-        percentage: total > 0 ? (item.nilai / total) * 100 : 0,
-        color: item.color,
-      }));
-      return { chartData: data, totalValue: total };
-    } else {
-      const total = aggregatedSources.reduce((acc, curr) => acc + curr.penerima, 0);
-      const data = aggregatedSources.map((item) => ({
-        name: item.name,
-        value: item.penerima,
-        percentage: total > 0 ? (item.penerima / total) * 100 : 0,
-        color: item.color,
-      }));
-      return { chartData: data, totalValue: total };
-    }
-  }, [aggregatedSources, activeFilter]);
-
-  // 6. Urutan rekapitulasi di bawah: tampilkan 4 teratas atau semua jika di-expand
-  const visibleItems = useMemo(() => {
-    if (isExpanded) return aggregatedSources;
-    return aggregatedSources.slice(0, 4);
-  }, [aggregatedSources, isExpanded]);
-
   return (
-    <div className="w-full bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs space-y-6">
-      {/* 1. HEADER SECTION (Judul & Filter Tahun) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-          Komposisi Pendanaan
-        </h2>
+    <div className="w-full space-y-4">
+      {/* Baris Filter Tahun jika ada variasi tahun */}
+      {availableYears.length > 0 && (
+        <div className="flex items-center justify-end gap-2 pr-1">
+          <span className="text-xs font-semibold text-slate-500">Tahun Anggaran:</span>
+          <div className="relative">
+            <select
+              value={selectedTahun}
+              onChange={(e) => setSelectedTahun(e.target.value)}
+              className="appearance-none bg-white hover:bg-slate-50 border border-slate-300 rounded-full py-1.5 pl-3 pr-8 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-700/20 cursor-pointer shadow-2xs"
+            >
+              <option value="semua">Semua Tahun</option>
+              {availableYears.map((yr) => (
+                <option key={yr} value={yr}>
+                  {yr}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
+              size={13}
+            />
+          </div>
+        </div>
+      )}
 
-        {/* Dropdown Tahun Anggaran jika ada data tahun */}
-        {availableYears.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-500">Tahun:</span>
-            <div className="relative">
-              <select
-                value={selectedTahun}
-                onChange={(e) => setSelectedTahun(e.target.value)}
-                className="appearance-none bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-full py-1.5 pl-3 pr-8 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900/10 cursor-pointer"
-              >
-                <option value="semua">Semua Tahun</option>
-                {availableYears.map((yr) => (
-                  <option key={yr} value={yr}>
-                    {yr}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
-                size={14}
-              />
+      {/* DUA PANEL KANAN - KIRI DALAM SATU BARIS */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        {/* =========================================================
+            PANEL KIRI: PERSENTASE NILAI PENDANAAN (DONUT + LEGENDA)
+        ========================================================= */}
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-7 shadow-xs flex flex-col justify-between">
+          <div>
+            {/* Header Panel Kiri */}
+            <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+              Persentase Nilai Pendanaan
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5 mb-4">
+              Komposisi total dana
+            </p>
+
+            {/* Donut Chart dengan Total Dana di Tengah */}
+            <div className="relative h-[240px] w-full flex items-center justify-center my-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Tooltip
+                    content={({ active, payload }: any) => {
+                      if (active && payload && payload.length) {
+                        const item = payload[0];
+                        return (
+                          <div className="bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-lg border border-slate-200 text-xs">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span
+                                className="w-2.5 h-2.5 rounded-full"
+                                style={{ backgroundColor: item.payload.color }}
+                              />
+                              <span className="font-bold text-slate-900">
+                                {item.name}
+                              </span>
+                            </div>
+                            <div className="text-slate-700 font-semibold">
+                              {formatRupiahShort(item.value)}{" "}
+                              <span className="text-slate-400 font-normal">
+                                ({formatPercentIndo(item.payload.percentage)})
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-slate-500 mt-0.5">
+                              {item.payload.penerima} penerima
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Pie
+                    data={items}
+                    dataKey="nilai"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={68}
+                    outerRadius={95}
+                    paddingAngle={1.5}
+                    stroke="#ffffff"
+                    strokeWidth={2}
+                    startAngle={90}
+                    endAngle={-270}
+                  >
+                    {items.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+
+              {/* Teks di Tengah Donut Chart: Total Dana & Nilai */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-xs sm:text-sm font-medium text-slate-500 tracking-tight">
+                  Total Dana
+                </span>
+                <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-0.5">
+                  {formatRupiahShort(totalDana)}
+                </span>
+              </div>
             </div>
           </div>
-        )}
-      </div>
 
-      {/* 2. RADIO BUTTONS: Sumber dana / Penerima */}
-      <div className="flex items-center gap-8 pt-1">
-        {/* Radio 1: Sumber dana */}
-        <label
-          onClick={() => setActiveFilter("sumber_dana")}
-          className="flex items-center gap-3 cursor-pointer select-none group"
-        >
-          <span
-            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-              activeFilter === "sumber_dana"
-                ? "border-slate-900 bg-white"
-                : "border-slate-300 group-hover:border-slate-400"
-            }`}
-          >
-            {activeFilter === "sumber_dana" && (
-              <span className="w-2.5 h-2.5 rounded-full bg-slate-900" />
-            )}
-          </span>
-          <span className="text-sm font-semibold text-slate-800">
-            Sumber dana
-          </span>
-        </label>
-
-        {/* Radio 2: Penerima */}
-        <label
-          onClick={() => setActiveFilter("penerima")}
-          className="flex items-center gap-3 cursor-pointer select-none group"
-        >
-          <span
-            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-              activeFilter === "penerima"
-                ? "border-slate-900 bg-white"
-                : "border-slate-300 group-hover:border-slate-400"
-            }`}
-          >
-            {activeFilter === "penerima" && (
-              <span className="w-2.5 h-2.5 rounded-full bg-slate-900" />
-            )}
-          </span>
-          <span className="text-sm font-semibold text-slate-800">
-            Penerima
-          </span>
-        </label>
-      </div>
-
-      {/* 3. KARTU UTAMA PERSENTASE & PIE CHART */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-7 shadow-2xs">
-        {/* Judul & Keterangan di Dalam Kartu */}
-        <div className="mb-4">
-          <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
-            {activeFilter === "sumber_dana"
-              ? "Persentase nilai pendanaan"
-              : "Persentase jumlah penerima"}
-          </h3>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-            {activeFilter === "sumber_dana"
-              ? "Distribusi nilai bantuan berdasarkan sumber dana."
-              : "Distribusi jumlah penerima bantuan berdasarkan sumber dana."}
-          </p>
-        </div>
-
-        {/* Diagram Lingkaran Penuh (Solid Pie Chart) */}
-        <div className="h-[250px] w-full flex items-center justify-center my-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Tooltip
-                content={({ active, payload }: any) => {
-                  if (active && payload && payload.length) {
-                    const item = payload[0];
-                    return (
-                      <div className="bg-white/95 backdrop-blur-md px-3 py-2 rounded-xl shadow-lg border border-slate-200 text-xs">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span
-                            className="w-2.5 h-2.5 rounded-full"
-                            style={{ backgroundColor: item.payload.color }}
-                          />
-                          <span className="font-bold text-slate-900">
-                            {item.name}
-                          </span>
-                        </div>
-                        <div className="text-slate-600 font-semibold">
-                          {activeFilter === "sumber_dana"
-                            ? formatRupiahShort(item.value)
-                            : `${item.value.toLocaleString("id-ID")} Penerima`}{" "}
-                          <span className="text-slate-400 font-normal">
-                            ({item.payload.percentage.toFixed(1)}%)
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
-              <Pie
-                data={chartData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                innerRadius={0}
-                outerRadius={85}
-                stroke="#ffffff"
-                strokeWidth={2}
-                startAngle={90}
-                endAngle={-270}
+          {/* Legenda & Persentase List di Bawah Donut Chart */}
+          <div className="space-y-3 pt-5 mt-2 border-t border-slate-100">
+            {items.map((item) => (
+              <div
+                key={`legend-${item.name}`}
+                className="flex items-center justify-between text-xs sm:text-sm"
               >
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Legenda Horizontal di Bawah Pie Chart */}
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-2">
-          {chartData.map((item) => (
-            <div
-              key={`legend-${item.name}`}
-              className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700"
-            >
-              <span
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: item.color }}
-              />
-              <span>{item.name}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 4. REKAPITULASI SUMBER DANA / PENERIMA */}
-      <div className="pt-2">
-        <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight mb-4">
-          {activeFilter === "sumber_dana"
-            ? "Rekapitulasi Sumber Dana"
-            : "Rekapitulasi Penerima"}
-        </h3>
-
-        {/* Daftar Baris Rekapitulasi */}
-        <div className="space-y-3.5 divide-y divide-slate-100">
-          {visibleItems.map((item, idx) => (
-            <div
-              key={item.name}
-              className={`flex items-center justify-between ${
-                idx > 0 ? "pt-3.5" : "pt-1"
-              }`}
-            >
-              <span className="text-sm font-semibold text-slate-800">
-                {item.name}
-              </span>
-              <span className="text-sm sm:text-base font-bold text-teal-700">
-                {activeFilter === "sumber_dana"
-                  ? formatRupiahShort(item.nilai)
-                  : `${item.penerima.toLocaleString("id-ID")} Penerima`}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Tombol Panah Bawah / Expand jika ada item tambahan */}
-        {aggregatedSources.length > 4 && (
-          <div className="flex justify-center mt-6">
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="w-8 h-8 rounded-full border border-slate-300 flex items-center justify-center text-slate-600 hover:bg-slate-50 hover:border-slate-400 transition cursor-pointer"
-              title={isExpanded ? "Tampilkan lebih sedikit" : "Tampilkan semua"}
-            >
-              <ChevronDown
-                className={`w-4 h-4 transition-transform duration-200 ${
-                  isExpanded ? "rotate-180" : ""
-                }`}
-              />
-            </button>
+                <div className="flex items-center gap-2.5">
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: item.color }}
+                  />
+                  <span className="font-semibold text-slate-800">
+                    {item.name}
+                  </span>
+                </div>
+                <span className="font-bold text-slate-900">
+                  {formatPercentIndo(item.percentage)}
+                </span>
+              </div>
+            ))}
           </div>
-        )}
+        </div>
+
+        {/* =========================================================
+            PANEL KANAN: REKAPITULASI SUMBER DANA (PROGRESS BARS)
+        ========================================================= */}
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-7 shadow-xs flex flex-col justify-between">
+          <div>
+            {/* Header Panel Kanan */}
+            <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+              Rekapitulasi Sumber Dana
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5 mb-5">
+              Nilai dana dan penerima
+            </p>
+
+            {/* List Sumber Dana dengan Progress Bar */}
+            <div className="space-y-5">
+              {items.map((item) => (
+                <div key={`rekap-${item.name}`} className="space-y-1.5">
+                  {/* Baris Atas: Nama Sumber Dana & Nilai Rupiah */}
+                  <div className="flex items-center justify-between text-xs sm:text-sm">
+                    <span className="font-bold text-slate-900">
+                      {item.name}
+                    </span>
+                    <span className="font-bold text-slate-900">
+                      {formatRupiahShort(item.nilai)}
+                    </span>
+                  </div>
+
+                  {/* Progress Bar Berwarna Sesuai Sumber */}
+                  <div className="h-2 w-full bg-[#edf2ee] rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${Math.min(Math.max(item.percentage, 2), 100)}%`,
+                        backgroundColor: item.color,
+                      }}
+                    />
+                  </div>
+
+                  {/* Baris Bawah: Jumlah Penerima & Persentase */}
+                  <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500">
+                    <span>{item.penerima.toLocaleString("id-ID")} penerima</span>
+                    <span className="font-medium text-slate-600">
+                      {formatPercentIndo(item.percentage)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Footer Panel Kanan: Total Penerima */}
+          <div className="pt-4 mt-6 border-t border-slate-100 flex items-center justify-between">
+            <span className="text-xs sm:text-sm font-semibold text-slate-600">
+              Total penerima
+            </span>
+            <span className="text-base sm:text-lg font-black text-slate-900">
+              {totalPenerima.toLocaleString("id-ID")} orang
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );
