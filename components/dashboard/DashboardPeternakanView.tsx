@@ -624,9 +624,9 @@ export default function DashboardPeternakanView({
       </div>
 
       {/* ========================================================
-          BARIS TENGAH: 3 WIDGET BERDAMPINGAN (EQUAL WIDTH 1:1:1)
+          BARIS TENGAH: 2 WIDGET BERDAMPINGAN (POPULASI TERNAK & KOMODITAS UNGGULAN)
       ======================================================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* ----------------------------------------------------
             WIDGET 1: POPULASI TERNAK PER JENIS (HORIZONTAL BAR)
         ---------------------------------------------------- */}
@@ -802,61 +802,6 @@ export default function DashboardPeternakanView({
           </div>
         </div>
 
-        {/* ----------------------------------------------------
-            WIDGET 3: PETA SEBARAN PETERNAKAN
-        ---------------------------------------------------- */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between min-h-[440px]">
-          <div>
-            {/* Header Widget */}
-            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-emerald-100/80 text-emerald-800 flex items-center justify-center">
-                  <MapPin size={16} />
-                </span>
-                <h3 className="text-sm font-extrabold text-slate-900 tracking-tight">
-                  Peta Sebaran Peternakan
-                </h3>
-              </div>
-              <Link
-                href="/peternakan"
-                className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 hover:underline cursor-pointer shrink-0 whitespace-nowrap"
-              >
-                <span>Lihat Detail</span>
-                <ArrowRight size={13} />
-              </Link>
-            </div>
-
-            {/* Container Peta Leaflet dengan Floating Legend Sesuai Mockup */}
-            <div className="relative h-[310px] w-full rounded-2xl overflow-hidden border border-slate-200/70 shadow-inner">
-              <DynamicPeternakanMap pins={mapPins} />
-
-              {/* Floating Legend di Kiri Bawah Sesuai Gambar Referensi */}
-              <div className="absolute bottom-3 left-3 z-[400] bg-white/95 backdrop-blur-xs p-2.5 rounded-xl border border-slate-200/90 shadow-md space-y-1.5 text-[11px] font-semibold text-slate-700">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#16a34a] inline-block shadow-2xs" />
-                  <span>Sapi</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#0d9488] inline-block shadow-2xs" />
-                  <span>Kambing</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#ea580c] inline-block shadow-2xs" />
-                  <span>Ayam</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#0284c7] inline-block shadow-2xs" />
-                  <span>Lainnya</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-            <span>GIS Koordinat Terdaftar: {mapPins.length} Titik</span>
-            <span className="font-semibold text-emerald-700">Tapanuli Selatan</span>
-          </div>
-        </div>
       </div>
 
       {/* ========================================================
