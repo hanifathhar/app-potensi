@@ -108,8 +108,8 @@ export default function Sidebar({
         },
       ]
       : []),
-    // Rule 2: Admin Dinas Perikanan hanya bisa akses data perikanan (hide Kelompok Tani)
-    ...(role !== "ADMIN_PERIKANAN"
+    // Rule 2: Admin Dinas Perikanan & PPL Perikanan hanya bisa akses data perikanan (hide Kelompok Tani)
+    ...(role !== "ADMIN_PERIKANAN" && role !== "PPL_PERIKANAN"
       ? [
         {
           title: "Kelompok Tani",
@@ -145,11 +145,11 @@ export default function Sidebar({
   ];
 
   // Filter menu potensi sesuai peran:
-  // - Admin Dinas Pertanian: Usaha Pertanian dan Usaha Peternakan
-  // - Admin Dinas Perikanan: Hanya Usaha Perikanan
+  // - Admin Dinas Pertanian & PPL Pertanian: Usaha Pertanian dan Usaha Peternakan
+  // - Admin Dinas Perikanan & PPL Perikanan: Hanya Usaha Perikanan
   const filteredPotensiItems = potensiItems.filter((item) => {
-    if (role === "ADMIN_PERTANIAN" && item.sector === "perikanan") return false;
-    if (role === "ADMIN_PERIKANAN" && item.sector !== "perikanan") return false;
+    if ((role === "ADMIN_PERTANIAN" || role === "PPL_PERTANIAN") && item.sector === "perikanan") return false;
+    if ((role === "ADMIN_PERIKANAN" || role === "PPL_PERIKANAN") && item.sector !== "perikanan") return false;
     return true;
   });
 

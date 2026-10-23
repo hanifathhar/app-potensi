@@ -95,14 +95,7 @@ export default async function PendanaanPage() {
             Tracking alokasi program KUR, APBN, APBD Provinsi, APBD Tapsel, Dana Desa, dan Swadaya
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="bg-emerald-50 text-emerald-800 text-xs font-bold px-3 py-2 rounded-xl border border-emerald-200">
-            Total Realisasi: {formatRupiah(totalDicairkan)}
-          </div>
-          <div className="bg-amber-50 text-amber-800 text-xs font-bold px-3 py-2 rounded-xl border border-amber-200">
-            Total Usulan: {formatRupiah(totalDiajukan)}
-          </div>
-        </div>
+
       </div>
 
       <PendanaanClientView initialUnits={allUnits} />

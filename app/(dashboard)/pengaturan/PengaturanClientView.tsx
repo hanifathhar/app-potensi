@@ -506,6 +506,10 @@ export default function PengaturanClientView({ kecamatans, desas }: Props) {
               >
                 <option value="semua">Semua Peran</option>
                 <option value="ADMIN_KABUPATEN">Admin Kabupaten</option>
+                <option value="ADMIN_PERTANIAN">Admin Dinas Pertanian</option>
+                <option value="ADMIN_PERIKANAN">Admin Dinas Perikanan</option>
+                <option value="PPL_PERTANIAN">PPL Pertanian</option>
+                <option value="PPL_PERIKANAN">PPL Perikanan</option>
                 <option value="ADMIN_KECAMATAN">Admin Kecamatan</option>
                 <option value="PETUGAS">Petugas Lapangan</option>
                 <option value="KELOMPOK_TANI">Kelompok Tani</option>
@@ -842,9 +846,13 @@ export default function PengaturanClientView({ kecamatans, desas }: Props) {
                     onChange={(e) => setPenggunaForm({ ...penggunaForm, peran: e.target.value })}
                     className="w-full px-3 py-2 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-[#16a34a] font-bold"
                   >
-                    <option value="ADMIN_KABUPATEN">Admin Kabupaten (Superadmin)</option>
+                    <option value="ADMIN_KABUPATEN">Admin Kabupaten</option>
+                    <option value="ADMIN_PERTANIAN">Admin Dinas Pertanian</option>
+                    <option value="ADMIN_PERIKANAN">Admin Dinas Perikanan</option>
+                    <option value="PPL_PERTANIAN">PPL Pertanian (Pertanian & Peternakan)</option>
+                    <option value="PPL_PERIKANAN">PPL Perikanan (Perikanan)</option>
                     <option value="ADMIN_KECAMATAN">Admin Kecamatan</option>
-                    <option value="PETUGAS">Petugas PPL / Lapangan</option>
+                    <option value="PETUGAS">Petugas PPL / Lapangan (Umum)</option>
                     <option value="KELOMPOK_TANI">Operator Kelompok Tani</option>
                   </select>
                 </div>

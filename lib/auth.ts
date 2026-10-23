@@ -16,6 +16,8 @@ export interface UserAuth {
     | "ADMIN_KECAMATAN"
     | "ADMIN_DESA"
     | "PETUGAS"
+    | "PPL_PERTANIAN"
+    | "PPL_PERIKANAN"
     | "KELOMPOK_TANI";
   role: string;
   kd_kecamatan?: string | null;
@@ -64,7 +66,9 @@ export function getUserFromRequest(req: Request | NextRequest): UserAuth | null 
 }
 
 /**
- * Validates sector access for Admin Dinas Pertanian & Admin Dinas Perikanan
+ * Validates sector access for Admin Dinas & Petugas PPL:
+ * - Admin Pertanian & PPL Pertanian: Pertanian & Peternakan
+ * - Admin Perikanan & PPL Perikanan: Perikanan
  */
 export function canAccessSector(
   user: UserAuth | null,
@@ -73,13 +77,13 @@ export function canAccessSector(
   if (!user) return false;
   if (user.peran === "SUPERADMIN" || user.peran === "ADMIN_KABUPATEN") return true;
 
-  // Admin Dinas Pertanian: Data Pertanian dan Peternakan
-  if (user.peran === "ADMIN_PERTANIAN") {
+  // Admin Dinas Pertanian & PPL Pertanian: Data Pertanian dan Peternakan
+  if (user.peran === "ADMIN_PERTANIAN" || user.peran === "PPL_PERTANIAN") {
     return sector === "pertanian" || sector === "peternakan";
   }
 
-  // Admin Dinas Perikanan: Hanya bisa akses data perikanan
-  if (user.peran === "ADMIN_PERIKANAN") {
+  // Admin Dinas Perikanan & PPL Perikanan: Hanya bisa akses data perikanan
+  if (user.peran === "ADMIN_PERIKANAN" || user.peran === "PPL_PERIKANAN") {
     return sector === "perikanan";
   }
 
@@ -134,8 +138,8 @@ export function getAuthorityFilter(
     return filter;
   }
 
-  // Rule 3: Petugas PPL dapat ditugaskan di banyak desa tetapi hanya boleh di dalam satu kecamatan
-  if (user.peran === "PETUGAS") {
+  // Rule 3: Petugas PPL (PETUGAS, PPL_PERTANIAN, PPL_PERIKANAN) dapat ditugaskan di banyak desa tetapi hanya boleh di dalam satu kecamatan
+  if (user.peran === "PETUGAS" || user.peran === "PPL_PERTANIAN" || user.peran === "PPL_PERIKANAN") {
     const filter: any = { kd_kecamatan: user.kd_kecamatan || "0" };
     const desaList =
       user.kd_desa_list && user.kd_desa_list.length > 0
@@ -189,8 +193,8 @@ export function isAuthorizedForTerritory(
     return Boolean(targetKecamatan && targetKecamatan === user.kd_kecamatan);
   }
 
-  // Rule 3: PPL Territory check
-  if (user.peran === "PETUGAS") {
+  // Rule 3: PPL Territory check (PETUGAS, PPL_PERTANIAN, PPL_PERIKANAN)
+  if (user.peran === "PETUGAS" || user.peran === "PPL_PERTANIAN" || user.peran === "PPL_PERIKANAN") {
     // Harus di dalam kecamatan yang sama
     if (targetKecamatan && targetKecamatan !== user.kd_kecamatan) return false;
 

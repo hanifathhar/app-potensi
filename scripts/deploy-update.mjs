@@ -94,17 +94,14 @@ async function main() {
   const filesToUpload = [
     'prisma/schema.prisma',
     'lib/auth.ts',
+    'hooks/useAuthority.ts',
     'middleware.ts',
     'components/Sidebar.tsx',
-    'app/api/auth/login/route.ts',
-    'app/api/me/route.ts',
-    'app/api/admin/dashboard/route.ts',
-    'app/api/pertanian/route.ts',
-    'app/api/perikanan/route.ts',
-    'app/api/peternakan/route.ts',
     'app/api/pengaturan/pengguna/route.ts',
     'app/(dashboard)/pengaturan/pengguna/PenggunaClientView.tsx',
+    'app/(dashboard)/pengaturan/PengaturanClientView.tsx',
     'app/(dashboard)/dashboard/page.tsx',
+    'app/profile/page.tsx',
   ];
 
   for (const file of filesToUpload) {
@@ -116,8 +113,8 @@ async function main() {
 
   console.log('✅ All files uploaded successfully.');
 
-  console.log('🔄 Running prisma db push and generate on server...');
-  await executeOnTarget(`cd /home/hnf/app-potensi && npx prisma db push --accept-data-loss && npx prisma generate`);
+  console.log('🔄 Running prisma generate on server...');
+  await executeOnTarget(`cd /home/hnf/app-potensi && npx prisma generate`);
 
   console.log('🔨 Building Next.js application on server...');
   await executeOnTarget(`cd /home/hnf/app-potensi && npm run build`);

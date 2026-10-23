@@ -15,6 +15,8 @@ export interface UserAuthData {
     | "ADMIN_KECAMATAN"
     | "ADMIN_DESA"
     | "PETUGAS"
+    | "PPL_PERTANIAN"
+    | "PPL_PERIKANAN"
     | "KELOMPOK_TANI";
   role: string;
   kd_kecamatan?: string | null;
@@ -65,10 +67,14 @@ export function useAuthority() {
   const isPerikananAdmin = peran === "ADMIN_PERIKANAN";
   const isDinas = isPertanianAdmin || isPerikananAdmin;
 
+  // PPL checks: PPL Pertanian (pertanian & peternakan) vs PPL Perikanan (perikanan)
+  const isPplPertanian = peran === "PPL_PERTANIAN";
+  const isPplPerikanan = peran === "PPL_PERIKANAN";
+  const isPpl = isPplPertanian || isPplPerikanan || peran === "PETUGAS";
+
   // Level territorial cakupan: Superadmin, Admin Kabupaten, dan Admin Dinas bekerja di tingkat Kabupaten
   const isKabupaten = isMasterDataAdmin || isDinas;
   const isKecamatan = peran === "ADMIN_KECAMATAN";
-  const isPpl = peran === "PETUGAS";
   const isPplOrDesa = isPpl || peran === "ADMIN_DESA" || peran === "KELOMPOK_TANI";
 
   const authKecamatan = user?.kd_kecamatan || "";
@@ -91,11 +97,11 @@ export function useAuthority() {
   const canChangeDesa = isKabupaten || isKecamatan || isPpl || !isLockedDesa;
 
   // Akses sektor sesuai role:
-  // - Admin Pertanian: Pertanian dan Peternakan
-  // - Admin Perikanan: Perikanan saja
+  // - Admin Pertanian & PPL Pertanian: Pertanian dan Peternakan
+  // - Admin Perikanan & PPL Perikanan: Perikanan saja
   const canAccessSector = (sector: "pertanian" | "perikanan" | "peternakan") => {
-    if (isPertanianAdmin) return sector === "pertanian" || sector === "peternakan";
-    if (isPerikananAdmin) return sector === "perikanan";
+    if (isPertanianAdmin || isPplPertanian) return sector === "pertanian" || sector === "peternakan";
+    if (isPerikananAdmin || isPplPerikanan) return sector === "perikanan";
     return true;
   };
 
@@ -137,6 +143,8 @@ export function useAuthority() {
     isMasterDataAdmin,
     isPertanianAdmin,
     isPerikananAdmin,
+    isPplPertanian,
+    isPplPerikanan,
     isDinas,
     isKabupaten,
     isKecamatan,

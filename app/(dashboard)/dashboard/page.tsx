@@ -90,8 +90,8 @@ export default function DashboardTaniTapselPage() {
   }, []);
 
   const currentUser = data?.currentUser;
-  const isPertanianAdmin = currentUser?.peran === "ADMIN_PERTANIAN";
-  const isPerikananAdmin = currentUser?.peran === "ADMIN_PERIKANAN";
+  const isPertanianAdmin = currentUser?.peran === "ADMIN_PERTANIAN" || currentUser?.peran === "PPL_PERTANIAN";
+  const isPerikananAdmin = currentUser?.peran === "ADMIN_PERIKANAN" || currentUser?.peran === "PPL_PERIKANAN";
 
   useEffect(() => {
     if (isPerikananAdmin) {

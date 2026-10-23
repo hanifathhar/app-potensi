@@ -66,20 +66,20 @@ export async function middleware(request: NextRequest) {
             return response;
         }
 
-        // Rule 1: Admin Dinas Pertanian TIDAK DAPAT mengakses data perikanan
-        if (role === "ADMIN_PERTANIAN" && pathname.startsWith("/perikanan")) {
-            console.log("⛔ Access denied - Admin Dinas Pertanian dilarang mengakses data perikanan");
+        // Rule 1: Admin Dinas Pertanian & PPL Pertanian TIDAK DAPAT mengakses data perikanan
+        if ((role === "ADMIN_PERTANIAN" || role === "PPL_PERTANIAN") && pathname.startsWith("/perikanan")) {
+            console.log("⛔ Access denied - Dinas Pertanian / PPL Pertanian dilarang mengakses data perikanan");
             return NextResponse.redirect(new URL("/unauthorized", request.url));
         }
 
-        // Rule 2: Admin Dinas Perikanan HANYA BISA akses data perikanan dan pendanaan
+        // Rule 2: Admin Dinas Perikanan & PPL Perikanan HANYA BISA akses data perikanan
         if (
-            role === "ADMIN_PERIKANAN" &&
+            (role === "ADMIN_PERIKANAN" || role === "PPL_PERIKANAN") &&
             (pathname.startsWith("/pertanian") ||
              pathname.startsWith("/peternakan") ||
              pathname.startsWith("/kelompok-tani"))
         ) {
-            console.log("⛔ Access denied - Admin Dinas Perikanan hanya dapat mengakses data perikanan dan pendanaan");
+            console.log("⛔ Access denied - Dinas Perikanan / PPL Perikanan hanya dapat mengakses data perikanan");
             return NextResponse.redirect(new URL("/unauthorized", request.url));
         }
 

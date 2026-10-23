@@ -80,6 +80,9 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
+  const isPplRole = (role?: string) =>
+    role === "PETUGAS" || role === "PPL_PERTANIAN" || role === "PPL_PERIKANAN";
+
   const getDesaName = (kd_desa: string) => {
     const found = desas.find((d) => d.kd_desa === kd_desa);
     return found ? found.nm_desa : kd_desa;
@@ -161,7 +164,7 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
       return;
     }
 
-    if (formData.peran === "PETUGAS" && !formData.kd_kecamatan) {
+    if (isPplRole(formData.peran) && !formData.kd_kecamatan) {
       const msg = "Petugas PPL wajib memilih 1 kecamatan penugasan.";
       setFormError(msg);
       toast.error(msg);
@@ -177,8 +180,8 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
         nama: trimmedNama,
         username: trimmedUsername,
         id: editingItem?.id,
-        kd_desa_list: formData.peran === "PETUGAS" ? formData.kd_desa_list : (formData.kd_desa ? [formData.kd_desa] : []),
-        kd_desa: formData.peran === "PETUGAS" ? (formData.kd_desa_list[0] || null) : (formData.kd_desa || null),
+        kd_desa_list: isPplRole(formData.peran) ? formData.kd_desa_list : (formData.kd_desa ? [formData.kd_desa] : []),
+        kd_desa: isPplRole(formData.peran) ? (formData.kd_desa_list[0] || null) : (formData.kd_desa || null),
       };
 
       const res = await fetch(url, {
@@ -242,6 +245,10 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
         return <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold text-white bg-sky-600">ADMIN PERIKANAN</span>;
       case "ADMIN_KECAMATAN":
         return <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold text-white bg-teal-700">ADMIN KECAMATAN</span>;
+      case "PPL_PERTANIAN":
+        return <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold text-white bg-emerald-600">PPL PERTANIAN</span>;
+      case "PPL_PERIKANAN":
+        return <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold text-white bg-sky-600">PPL PERIKANAN</span>;
       case "PETUGAS":
         return <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold text-white bg-amber-600">PETUGAS PPL</span>;
       case "KELOMPOK_TANI":
@@ -324,8 +331,10 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
             <option value="ADMIN_KABUPATEN">Admin Kabupaten</option>
             <option value="ADMIN_PERTANIAN">Admin Dinas Pertanian</option>
             <option value="ADMIN_PERIKANAN">Admin Dinas Perikanan</option>
+            <option value="PPL_PERTANIAN">PPL Pertanian</option>
+            <option value="PPL_PERIKANAN">PPL Perikanan</option>
             <option value="ADMIN_KECAMATAN">Admin Kecamatan</option>
-            <option value="PETUGAS">Admin PPL / Petugas</option>
+            <option value="PETUGAS">Admin PPL / Petugas (Semua)</option>
             <option value="KELOMPOK_TANI">Operator Kelompok Tani</option>
           </select>
 
@@ -339,7 +348,7 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                 username: "",
                 email: "",
                 password: "",
-                peran: "PETUGAS",
+                peran: "PPL_PERTANIAN",
                 kd_kecamatan: kecamatans[0]?.kd_kecamatan || "",
                 kd_desa: "",
                 kd_desa_list: [],
@@ -399,7 +408,7 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                           <p className="font-semibold text-slate-800">
                             Kec. {u.kecamatan.nm_kecamatan}
                           </p>
-                          {u.peran === "PETUGAS" && u.kd_desa_list && u.kd_desa_list.length > 0 ? (
+                          {isPplRole(u.peran) && u.kd_desa_list && u.kd_desa_list.length > 0 ? (
                             <div className="mt-1">
                               <span className="inline-block text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 mb-1">
                                 {u.kd_desa_list.length} Desa Penugasan:
@@ -604,7 +613,7 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                       setFormData({
                         ...formData,
                         peran: nextPeran,
-                        kd_desa_list: nextPeran === "PETUGAS" ? formData.kd_desa_list : [],
+                        kd_desa_list: isPplRole(nextPeran) ? formData.kd_desa_list : [],
                       });
                     }}
                     className="w-full px-3 py-2 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-[#16a34a] font-bold"
@@ -612,8 +621,10 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                     <option value="ADMIN_KABUPATEN">Admin Kabupaten</option>
                     <option value="ADMIN_PERTANIAN">Admin Dinas Pertanian</option>
                     <option value="ADMIN_PERIKANAN">Admin Dinas Perikanan</option>
+                    <option value="PPL_PERTANIAN">PPL Pertanian (Pertanian & Peternakan)</option>
+                    <option value="PPL_PERIKANAN">PPL Perikanan (Perikanan)</option>
                     <option value="ADMIN_KECAMATAN">Admin Kecamatan</option>
-                    <option value="PETUGAS">Petugas PPL</option>
+                    <option value="PETUGAS">Petugas PPL (Umum)</option>
                     <option value="KELOMPOK_TANI">Operator Kelompok Tani</option>
                   </select>
                 </div>
@@ -641,7 +652,7 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
 
                 <div>
                   <select
-                    required={formData.peran === "PETUGAS"}
+                    required={isPplRole(formData.peran)}
                     value={formData.kd_kecamatan}
                     onChange={(e) =>
                       setFormData({
@@ -654,7 +665,7 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                     className="w-full px-3 py-2 border rounded-xl bg-white focus:ring-2 focus:ring-[#16a34a]"
                   >
                     <option value="">
-                      {formData.peran === "PETUGAS"
+                      {isPplRole(formData.peran)
                         ? "-- Pilih Kecamatan Penugasan PPL --"
                         : "-- Semua / Tingkat Kabupaten --"}
                     </option>
@@ -667,7 +678,7 @@ export default function PenggunaClientView({ kecamatans, desas }: Props) {
                 </div>
 
                 {/* Multi-desa untuk Petugas PPL */}
-                {formData.peran === "PETUGAS" ? (
+                {isPplRole(formData.peran) ? (
                   <div className="space-y-2 pt-1">
                     <div className="flex items-center justify-between">
                       <label className="font-bold text-slate-700">

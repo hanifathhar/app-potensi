@@ -115,7 +115,8 @@ export async function POST(request: Request) {
       finalDesaList = [kd_desa.trim()];
     }
 
-    if (peran === "PETUGAS") {
+    const isPplRole = peran === "PETUGAS" || peran === "PPL_PERTANIAN" || peran === "PPL_PERIKANAN";
+    if (isPplRole) {
       if (!kd_kecamatan || !kd_kecamatan.trim()) {
         return NextResponse.json(
           { success: false, error: "Petugas PPL wajib ditentukan wilayah kecamatannya." },
@@ -218,7 +219,8 @@ export async function PUT(request: Request) {
       finalDesaList = [kd_desa.trim()];
     }
 
-    if (peran === "PETUGAS") {
+    const isPplRole = peran === "PETUGAS" || peran === "PPL_PERTANIAN" || peran === "PPL_PERIKANAN";
+    if (isPplRole) {
       if (!kd_kecamatan || !kd_kecamatan.trim()) {
         return NextResponse.json(
           { success: false, error: "Petugas PPL wajib ditentukan wilayah kecamatannya." },

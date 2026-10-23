@@ -135,6 +135,14 @@ export default function ProfilePage() {
         return "Administrator Sistem";
       case "ADMIN_KABUPATEN":
         return "Administrator Kabupaten";
+      case "ADMIN_PERTANIAN":
+        return "Admin Dinas Pertanian";
+      case "ADMIN_PERIKANAN":
+        return "Admin Dinas Perikanan";
+      case "PPL_PERTANIAN":
+        return "Petugas PPL Pertanian";
+      case "PPL_PERIKANAN":
+        return "Petugas PPL Perikanan";
       case "ADMIN_KECAMATAN":
         return "Administrator Kecamatan";
       case "ADMIN_DESA":
@@ -142,7 +150,9 @@ export default function ProfilePage() {
       case "VERIFIKATOR":
         return "Petugas Verifikator";
       case "PETUGAS":
-        return "Petugas Pelaksana";
+        return "Petugas PPL Lapangan";
+      case "KELOMPOK_TANI":
+        return "Kelompok Tani";
       default:
         return role ? role.replace(/_/g, " ") : "Pengguna Sistem";
     }
@@ -154,6 +164,14 @@ export default function ProfilePage() {
         return "Administrator Sistem";
       case "ADMIN_KABUPATEN":
         return "Administrator Kabupaten";
+      case "ADMIN_PERTANIAN":
+        return "Admin Dinas Pertanian";
+      case "ADMIN_PERIKANAN":
+        return "Admin Dinas Perikanan";
+      case "PPL_PERTANIAN":
+        return "Petugas PPL Pertanian";
+      case "PPL_PERIKANAN":
+        return "Petugas PPL Perikanan";
       case "ADMIN_KECAMATAN":
         return "Administrator Kecamatan";
       case "ADMIN_DESA":
@@ -161,7 +179,9 @@ export default function ProfilePage() {
       case "VERIFIKATOR":
         return "Petugas Verifikator";
       case "PETUGAS":
-        return "Petugas Pelaksana";
+        return "Petugas PPL Lapangan";
+      case "KELOMPOK_TANI":
+        return "Kelompok Tani";
       default:
         return role ? role.replace(/_/g, " ") : "Pengguna Sistem";
     }
