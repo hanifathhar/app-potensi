@@ -227,6 +227,19 @@ export default async function LandingPage() {
                 priority
               />
             </div>
+            {/* Gambar Tapsel Bangkit */}
+            <div className="relative h-8 sm:h-9 w-28 sm:w-36 md:w-40 shrink-0">
+              <Image
+                src="/tapselbangkit.png"
+                alt="Tapsel Bangkit"
+                fill
+                sizes="(max-width: 640px) 112px, 160px"
+                className="object-contain"
+                priority
+                unoptimized
+              />
+            </div>
+            <div className="h-8 w-px bg-slate-200 hidden sm:block" />
             <div className="flex items-center gap-3">
               <div className="leading-tight">
                 <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -275,19 +288,19 @@ export default async function LandingPage() {
         </div>
       </header>
 
-      {/* 2. HERO SECTION (Lush Green Hills & Terraces with "Tapsel Bangkit" badge) */}
-      <section className="relative overflow-hidden bg-[#072419] text-white py-14 sm:py-20 lg:py-24">
-        {/* Background Image Panorama */}
+      {/* 2. HERO SECTION (Banner Transparan Penuh dengan Teks Pemkab Tapsel Terlihat Jelas) */}
+      <section className="relative overflow-hidden bg-[#072419] text-white pt-24 pb-16 sm:pt-32 sm:pb-24 lg:pt-36 lg:pb-28">
+        {/* Background Image Panorama Banner - Posisi bg-top agar teks Pemkab Tapsel di kiri atas terlihat utuh */}
         <div
-          className="absolute inset-0 opacity-40 mix-blend-overlay pointer-events-none bg-cover bg-center"
+          className="absolute inset-0 opacity-60 pointer-events-none bg-cover bg-top"
           style={{
-            backgroundImage:
-              "url('/images/kebun.jpeg')",
+            backgroundImage: "url('/images/banner.png')",
           }}
         />
 
-        {/* Gradient Lighting Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#072419]/95 via-[#0c3928]/85 to-[#124b35]/70 pointer-events-none" />
+        {/* Gradient Lighting Overlay - Tipis di atas agar teks Pemkab tampak jelas, pekat ke bawah untuk kontras teks */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-[#072419]/65 to-[#072419] pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#072419]/75 via-transparent to-transparent pointer-events-none" />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
@@ -298,15 +311,15 @@ export default async function LandingPage() {
                 <span className="tracking-wide">PORTAL DATA POTENSI DAERAH</span>
               </div>
 
-              <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-[1.15]">
+              <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-[1.15] drop-shadow-md">
                 Potensi Tapsel, <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-teal-100 to-amber-200">
                   Untuk Masa Depan yang Lebih Baik
                 </span>
               </h1>
 
-              <p className="text-sm sm:text-base text-emerald-100/90 font-medium leading-relaxed max-w-xl">
-                Sistem Informasi Data Agro Layanan Informasi Hasil Angkola Nusantara
+              <p className="text-sm sm:text-base text-emerald-100/90 font-medium leading-relaxed max-w-xl drop-shadow-xs">
+                Sistem Informasi Data Agro Layanan Informasi Hasil Angkola Nusantara (SIDALIHAN)
               </p>
 
               <div className="pt-2 flex flex-wrap items-center gap-3">
