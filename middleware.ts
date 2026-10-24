@@ -38,7 +38,8 @@ export async function middleware(request: NextRequest) {
         pathname.endsWith(".jpeg") ||
         pathname.endsWith(".svg") ||
         pathname.endsWith(".webp") ||
-        pathname.endsWith(".ico")
+        pathname.endsWith(".ico") ||
+        pathname.endsWith(".pdf")
     ) {
         return NextResponse.next();
     }
@@ -137,6 +138,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next|favicon.ico|favicon.png|uploads|images|icons|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!api|_next|favicon.ico|favicon.png|uploads|images|icons|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|pdf)$).*)",
   ],
 };
