@@ -10,6 +10,9 @@ export async function GET(request: Request) {
     const kd_kecamatan = searchParams.get("kd_kecamatan") || "";
     const kd_desa = searchParams.get("kd_desa") || "";
     const status = searchParams.get("status") || "";
+    const dateFilter = searchParams.get("dateFilter") || "semua";
+    const startDate = searchParams.get("startDate") || "";
+    const endDate = searchParams.get("endDate") || "";
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
@@ -29,7 +32,43 @@ export async function GET(request: Request) {
       ];
     }
 
-    const [total, data] = await Promise.all([
+    // Date calculations for "tgl input" (createdAt)
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const startOf7Days = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7, 0, 0, 0, 0);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+
+    if (dateFilter === "today") {
+      where.createdAt = { gte: startOfToday };
+    } else if (dateFilter === "7days") {
+      where.createdAt = { gte: startOf7Days };
+    } else if (dateFilter === "month" || dateFilter === "30days") {
+      where.createdAt = { gte: startOfMonth };
+    } else if (dateFilter === "custom" || startDate || endDate) {
+      const createdAtFilter: any = {};
+      if (startDate) {
+        createdAtFilter.gte = new Date(`${startDate}T00:00:00`);
+      }
+      if (endDate) {
+        createdAtFilter.lte = new Date(`${endDate}T23:59:59.999`);
+      }
+      if (Object.keys(createdAtFilter).length > 0) {
+        where.createdAt = createdAtFilter;
+      }
+    }
+
+    // Stats territory filter
+    const statsWhere: any = { ...authorityFilter };
+
+    const [
+      total,
+      data,
+      totalPoktan,
+      baruHariIni,
+      baru7Hari,
+      baruBulanIni,
+      totalAktif,
+    ] = await Promise.all([
       prisma.kelompokTani.count({ where }),
       prisma.kelompokTani.findMany({
         where,
@@ -44,6 +83,19 @@ export async function GET(request: Request) {
           },
         },
       }),
+      prisma.kelompokTani.count({ where: statsWhere }),
+      prisma.kelompokTani.count({
+        where: { ...statsWhere, createdAt: { gte: startOfToday } },
+      }),
+      prisma.kelompokTani.count({
+        where: { ...statsWhere, createdAt: { gte: startOf7Days } },
+      }),
+      prisma.kelompokTani.count({
+        where: { ...statsWhere, createdAt: { gte: startOfMonth } },
+      }),
+      prisma.kelompokTani.count({
+        where: { ...statsWhere, status: "AKTIF" },
+      }),
     ]);
 
     return NextResponse.json({
@@ -53,6 +105,13 @@ export async function GET(request: Request) {
       page,
       totalPages: Math.ceil(total / limit),
       currentUser: user,
+      stats: {
+        total: totalPoktan,
+        baruHariIni,
+        baru7Hari,
+        baruBulanIni,
+        totalAktif,
+      },
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

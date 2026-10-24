@@ -26,7 +26,25 @@ export async function GET(request: Request) {
 
     const where: any = { ...authorityFilter };
     if (kd_komoditas && kd_komoditas !== "semua") where.kd_komoditas = kd_komoditas;
-    if (status && status !== "semua") where.status = status as StatusData;
+
+    // Filter Status Usaha / Lahan (AKTIF, ISTIRAHAT, GAGAL_PANEN, NON_AKTIF)
+    if (status && status !== "semua") {
+      if (status === "ISTIRAHAT") {
+        where.kondisiTanaman = "Istirahat";
+      } else if (status === "GAGAL_PANEN") {
+        where.kondisiTanaman = "Gagal Panen";
+      } else if (status === "NON_AKTIF" || status === "NONAKTIF") {
+        where.OR = [
+          { status: "NONAKTIF" },
+          { kondisiTanaman: "Non Aktif" },
+        ];
+      } else if (status === "AKTIF") {
+        where.status = "AKTIF";
+        where.NOT = {
+          kondisiTanaman: { in: ["Istirahat", "Gagal Panen", "Non Aktif"] },
+        };
+      }
+    }
 
     if (search) {
       where.OR = [
@@ -36,7 +54,22 @@ export async function GET(request: Request) {
       ];
     }
 
-    const [total, data] = await Promise.all([
+    // Stats territory filter
+    const statsWhere: any = { ...authorityFilter };
+    if (kd_kecamatan && kd_kecamatan !== "semua") statsWhere.kd_kecamatan = kd_kecamatan;
+    if (kd_desa && kd_desa !== "semua") statsWhere.kd_desa = kd_desa;
+
+    const [
+      total,
+      data,
+      totalKebun,
+      totalLuasAggregate,
+      komoditasDistinct,
+      statusAktif,
+      statusIstirahat,
+      statusGagalPanen,
+      statusNonAktif,
+    ] = await Promise.all([
       prisma.kebun.count({ where }),
       prisma.kebun.findMany({
         where,
@@ -51,15 +84,59 @@ export async function GET(request: Request) {
           foto: true,
         },
       }),
+      prisma.kebun.count({ where: statsWhere }),
+      prisma.kebun.aggregate({ where: statsWhere, _sum: { luasLahanHa: true } }),
+      prisma.kebun.groupBy({ by: ["kd_komoditas"], where: statsWhere, _count: true }),
+      prisma.kebun.count({
+        where: {
+          ...statsWhere,
+          status: "AKTIF",
+          NOT: { kondisiTanaman: { in: ["Istirahat", "Gagal Panen", "Non Aktif"] } },
+        },
+      }),
+      prisma.kebun.count({
+        where: { ...statsWhere, kondisiTanaman: "Istirahat" },
+      }),
+      prisma.kebun.count({
+        where: { ...statsWhere, kondisiTanaman: "Gagal Panen" },
+      }),
+      prisma.kebun.count({
+        where: {
+          ...statsWhere,
+          OR: [{ status: "NONAKTIF" }, { kondisiTanaman: "Non Aktif" }],
+        },
+      }),
     ]);
+
+    // Format data with normalized statusUsaha
+    const formattedData = data.map((item) => {
+      let statusUsaha = "AKTIF";
+      if (item.kondisiTanaman === "Istirahat") statusUsaha = "ISTIRAHAT";
+      else if (item.kondisiTanaman === "Gagal Panen") statusUsaha = "GAGAL_PANEN";
+      else if (item.status === "NONAKTIF" || item.kondisiTanaman === "Non Aktif") statusUsaha = "NON_AKTIF";
+      else if (item.status === "AKTIF") statusUsaha = "AKTIF";
+      return {
+        ...item,
+        statusUsaha,
+      };
+    });
 
     return NextResponse.json({
       success: true,
-      data,
+      data: formattedData,
       total,
       page,
       totalPages: Math.ceil(total / limit),
       currentUser: user,
+      stats: {
+        totalKebun,
+        totalLuasHa: Number(totalLuasAggregate._sum.luasLahanHa || 0),
+        totalKomoditas: komoditasDistinct.length,
+        statusAktif,
+        statusIstirahat,
+        statusGagalPanen,
+        statusNonAktif,
+      },
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -119,6 +196,24 @@ export async function POST(request: Request) {
       );
     }
 
+    let dbStatus: StatusData = "AKTIF";
+    let dbKondisiTanaman = kondisiTanaman || "Baik";
+    if (status === "ISTIRAHAT") {
+      dbStatus = "AKTIF";
+      dbKondisiTanaman = "Istirahat";
+    } else if (status === "GAGAL_PANEN") {
+      dbStatus = "AKTIF";
+      dbKondisiTanaman = "Gagal Panen";
+    } else if (status === "NON_AKTIF" || status === "NONAKTIF") {
+      dbStatus = "NONAKTIF";
+      dbKondisiTanaman = "Non Aktif";
+    } else if (status === "AKTIF") {
+      dbStatus = "AKTIF";
+      if (!kondisiTanaman || kondisiTanaman === "Istirahat" || kondisiTanaman === "Gagal Panen" || kondisiTanaman === "Non Aktif") {
+        dbKondisiTanaman = "Baik";
+      }
+    }
+
     const created = await prisma.kebun.create({
       data: {
         kd_kebun,
@@ -134,10 +229,10 @@ export async function POST(request: Request) {
         luasLahanHa: luasLahanHa ? parseFloat(luasLahanHa) : null,
         tahunTanam: tahunTanam ? parseInt(tahunTanam) : null,
         sistemTanam,
-        kondisiTanaman,
+        kondisiTanaman: dbKondisiTanaman,
         statusLahan,
         deskripsi,
-        status: (status as StatusData) || "AKTIF",
+        status: dbStatus,
         foto: fotoUrl
           ? {
               create: {
@@ -205,6 +300,26 @@ export async function PUT(request: Request) {
       );
     }
 
+    let dbStatus: StatusData | undefined = undefined;
+    let dbKondisiTanaman = kondisiTanaman;
+    if (status) {
+      if (status === "ISTIRAHAT") {
+        dbStatus = "AKTIF";
+        dbKondisiTanaman = "Istirahat";
+      } else if (status === "GAGAL_PANEN") {
+        dbStatus = "AKTIF";
+        dbKondisiTanaman = "Gagal Panen";
+      } else if (status === "NON_AKTIF" || status === "NONAKTIF") {
+        dbStatus = "NONAKTIF";
+        dbKondisiTanaman = "Non Aktif";
+      } else if (status === "AKTIF") {
+        dbStatus = "AKTIF";
+        if (!kondisiTanaman || kondisiTanaman === "Istirahat" || kondisiTanaman === "Gagal Panen" || kondisiTanaman === "Non Aktif") {
+          dbKondisiTanaman = "Baik";
+        }
+      }
+    }
+
     const updated = await prisma.kebun.update({
       where: { id },
       data: {
@@ -221,10 +336,10 @@ export async function PUT(request: Request) {
         luasLahanHa: luasLahanHa !== undefined ? (luasLahanHa ? parseFloat(luasLahanHa) : null) : undefined,
         tahunTanam: tahunTanam ? parseInt(tahunTanam) : null,
         sistemTanam,
-        kondisiTanaman,
+        kondisiTanaman: dbKondisiTanaman !== undefined ? dbKondisiTanaman : undefined,
         statusLahan,
         deskripsi,
-        status: status as StatusData,
+        status: dbStatus,
       },
     });
 

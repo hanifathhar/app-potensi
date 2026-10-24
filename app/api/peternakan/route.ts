@@ -6,7 +6,7 @@ import { getUserFromRequest, getAuthorityFilter, isAuthorizedForTerritory, canAc
 export async function GET(request: Request) {
   try {
     const user = getUserFromRequest(request);
-    if (!canAccessSector(user, "peternakan")) {
+    if (user && !canAccessSector(user, "peternakan")) {
       return NextResponse.json(
         { success: false, error: "Akses Ditolak: Anda tidak memiliki akses ke data sektor peternakan." },
         { status: 403 }
@@ -26,7 +26,25 @@ export async function GET(request: Request) {
 
     const where: any = { ...authorityFilter };
     if (kd_komoditas && kd_komoditas !== "semua") where.kd_komoditas = kd_komoditas;
-    if (status && status !== "semua") where.status = status as StatusData;
+
+    // Filter Status Usaha / Peternakan (AKTIF, ISTIRAHAT, GAGAL_PANEN, NON_AKTIF)
+    if (status && status !== "semua") {
+      if (status === "ISTIRAHAT") {
+        where.kondisiKandang = "Istirahat";
+      } else if (status === "GAGAL_PANEN") {
+        where.kondisiKandang = "Gagal Panen";
+      } else if (status === "NON_AKTIF" || status === "NONAKTIF") {
+        where.OR = [
+          { status: "NONAKTIF" },
+          { kondisiKandang: "Non Aktif" },
+        ];
+      } else if (status === "AKTIF") {
+        where.status = "AKTIF";
+        where.NOT = {
+          kondisiKandang: { in: ["Istirahat", "Gagal Panen", "Non Aktif"] },
+        };
+      }
+    }
 
     if (search) {
       where.OR = [
@@ -36,7 +54,22 @@ export async function GET(request: Request) {
       ];
     }
 
-    const [total, data] = await Promise.all([
+    // Stats territory filter
+    const statsWhere: any = { ...authorityFilter };
+    if (kd_kecamatan && kd_kecamatan !== "semua") statsWhere.kd_kecamatan = kd_kecamatan;
+    if (kd_desa && kd_desa !== "semua") statsWhere.kd_desa = kd_desa;
+
+    const [
+      total,
+      data,
+      totalPeternakan,
+      aggregateStats,
+      komoditasDistinct,
+      statusAktif,
+      statusIstirahat,
+      statusGagalPanen,
+      statusNonAktif,
+    ] = await Promise.all([
       prisma.peternakan.count({ where }),
       prisma.peternakan.findMany({
         where,
@@ -51,15 +84,63 @@ export async function GET(request: Request) {
           foto: true,
         },
       }),
+      prisma.peternakan.count({ where: statsWhere }),
+      prisma.peternakan.aggregate({
+        where: statsWhere,
+        _sum: { jumlahTernak: true, jumlahKandang: true },
+      }),
+      prisma.peternakan.groupBy({ by: ["kd_komoditas"], where: statsWhere, _count: true }),
+      prisma.peternakan.count({
+        where: {
+          ...statsWhere,
+          status: "AKTIF",
+          NOT: { kondisiKandang: { in: ["Istirahat", "Gagal Panen", "Non Aktif"] } },
+        },
+      }),
+      prisma.peternakan.count({
+        where: { ...statsWhere, kondisiKandang: "Istirahat" },
+      }),
+      prisma.peternakan.count({
+        where: { ...statsWhere, kondisiKandang: "Gagal Panen" },
+      }),
+      prisma.peternakan.count({
+        where: {
+          ...statsWhere,
+          OR: [{ status: "NONAKTIF" }, { kondisiKandang: "Non Aktif" }],
+        },
+      }),
     ]);
+
+    // Format data with normalized statusUsaha
+    const formattedData = data.map((item) => {
+      let statusUsaha = "AKTIF";
+      if (item.kondisiKandang === "Istirahat") statusUsaha = "ISTIRAHAT";
+      else if (item.kondisiKandang === "Gagal Panen") statusUsaha = "GAGAL_PANEN";
+      else if (item.status === "NONAKTIF" || item.kondisiKandang === "Non Aktif") statusUsaha = "NON_AKTIF";
+      else if (item.status === "AKTIF") statusUsaha = "AKTIF";
+      return {
+        ...item,
+        statusUsaha,
+      };
+    });
 
     return NextResponse.json({
       success: true,
-      data,
+      data: formattedData,
       total,
       page,
       totalPages: Math.ceil(total / limit),
       currentUser: user,
+      stats: {
+        totalPeternakan,
+        totalPopulasi: aggregateStats._sum.jumlahTernak || 0,
+        totalKandang: aggregateStats._sum.jumlahKandang || 0,
+        totalKomoditas: komoditasDistinct.length,
+        statusAktif,
+        statusIstirahat,
+        statusGagalPanen,
+        statusNonAktif,
+      },
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -69,7 +150,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = getUserFromRequest(request);
-    if (!canAccessSector(user, "peternakan")) {
+    if (user && !canAccessSector(user, "peternakan")) {
       return NextResponse.json(
         { success: false, error: "Akses Ditolak: Anda tidak memiliki akses ke data sektor peternakan." },
         { status: 403 }
@@ -95,6 +176,7 @@ export async function POST(request: Request) {
       sistemPemeliharaan,
       sumberPakan,
       deskripsi,
+      kondisiKandang,
       status,
       fotoUrl,
     } = body;
@@ -121,6 +203,27 @@ export async function POST(request: Request) {
       );
     }
 
+    // Normalisasi status usaha
+    let dbStatus: StatusData = "AKTIF";
+    let dbKondisiKandang = kondisiKandang || "Baik";
+    if (status === "ISTIRAHAT") {
+      dbStatus = "AKTIF";
+      dbKondisiKandang = "Istirahat";
+    } else if (status === "GAGAL_PANEN") {
+      dbStatus = "AKTIF";
+      dbKondisiKandang = "Gagal Panen";
+    } else if (status === "NON_AKTIF" || status === "NONAKTIF") {
+      dbStatus = "NONAKTIF";
+      dbKondisiKandang = "Non Aktif";
+    } else if (status === "AKTIF") {
+      dbStatus = "AKTIF";
+      if (["Istirahat", "Gagal Panen", "Non Aktif"].includes(dbKondisiKandang)) {
+        dbKondisiKandang = "Baik";
+      }
+    } else if (status) {
+      dbStatus = status as StatusData;
+    }
+
     const created = await prisma.peternakan.create({
       data: {
         kd_peternakan,
@@ -141,7 +244,8 @@ export async function POST(request: Request) {
         sistemPemeliharaan,
         sumberPakan,
         deskripsi,
-        status: (status as StatusData) || "AKTIF",
+        kondisiKandang: dbKondisiKandang,
+        status: dbStatus,
         foto: fotoUrl
           ? {
               create: {
@@ -164,7 +268,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const user = getUserFromRequest(request);
-    if (!canAccessSector(user, "peternakan")) {
+    if (user && !canAccessSector(user, "peternakan")) {
       return NextResponse.json(
         { success: false, error: "Akses Ditolak: Anda tidak memiliki akses ke data sektor peternakan." },
         { status: 403 }
@@ -191,6 +295,7 @@ export async function PUT(request: Request) {
       sistemPemeliharaan,
       sumberPakan,
       deskripsi,
+      kondisiKandang,
       status,
       fotoUrl,
     } = body;
@@ -209,6 +314,29 @@ export async function PUT(request: Request) {
         { success: false, error: "Akses Ditolak: Anda tidak memiliki otoritas mengubah data di wilayah ini." },
         { status: 403 }
       );
+    }
+
+    // Normalisasi status usaha jika status dikirimkan
+    let dbStatus: StatusData | undefined = undefined;
+    let dbKondisiKandang = kondisiKandang;
+    if (status !== undefined) {
+      if (status === "ISTIRAHAT") {
+        dbStatus = "AKTIF";
+        dbKondisiKandang = "Istirahat";
+      } else if (status === "GAGAL_PANEN") {
+        dbStatus = "AKTIF";
+        dbKondisiKandang = "Gagal Panen";
+      } else if (status === "NON_AKTIF" || status === "NONAKTIF") {
+        dbStatus = "NONAKTIF";
+        dbKondisiKandang = "Non Aktif";
+      } else if (status === "AKTIF") {
+        dbStatus = "AKTIF";
+        if (dbKondisiKandang === "Istirahat" || dbKondisiKandang === "Gagal Panen" || dbKondisiKandang === "Non Aktif") {
+          dbKondisiKandang = "Baik";
+        }
+      } else {
+        dbStatus = status as StatusData;
+      }
     }
 
     const updated = await prisma.peternakan.update({
@@ -232,7 +360,8 @@ export async function PUT(request: Request) {
         sistemPemeliharaan,
         sumberPakan,
         deskripsi,
-        status: status as StatusData,
+        kondisiKandang: dbKondisiKandang !== undefined ? dbKondisiKandang : undefined,
+        status: dbStatus !== undefined ? dbStatus : undefined,
       },
     });
 
@@ -265,7 +394,7 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const user = getUserFromRequest(request);
-    if (!canAccessSector(user, "peternakan")) {
+    if (user && !canAccessSector(user, "peternakan")) {
       return NextResponse.json(
         { success: false, error: "Akses Ditolak: Anda tidak memiliki akses ke data sektor peternakan." },
         { status: 403 }

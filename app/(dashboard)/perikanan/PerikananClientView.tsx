@@ -22,6 +22,10 @@ import {
   Image as ImageIcon,
   Users,
   Eye,
+  Layers,
+  Clock,
+  AlertTriangle,
+  XCircle,
 } from "lucide-react";
 import { useAuthority } from "@/hooks/useAuthority";
 import LocationPicker from "@/components/potensi/LocationPicker";
@@ -45,6 +49,7 @@ interface KolamItem {
   sistemBudidaya?: string;
   kapasitasBenih?: number;
   status: string;
+  statusUsaha?: string;
   deskripsi?: string;
   foto?: { id?: string; url: string; judul?: string; jenisFoto?: string }[];
   kecamatan?: { nm_kecamatan: string };
@@ -81,6 +86,26 @@ export default function PerikananClientView() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+
+  const [stats, setStats] = useState<{
+    totalKolam: number;
+    totalLuasM2: number;
+    totalPetak: number;
+    totalKomoditas: number;
+    statusAktif: number;
+    statusIstirahat: number;
+    statusGagalPanen: number;
+    statusNonAktif: number;
+  }>({
+    totalKolam: 0,
+    totalLuasM2: 0,
+    totalPetak: 0,
+    totalKomoditas: 0,
+    statusAktif: 0,
+    statusIstirahat: 0,
+    statusGagalPanen: 0,
+    statusNonAktif: 0,
+  });
 
   // Dropdown lists
   const [kecamatanList, setKecamatanList] = useState<{ kd_kecamatan: string; nm_kecamatan: string }[]>([]);
@@ -200,6 +225,9 @@ export default function PerikananClientView() {
         setData(json.data);
         setTotal(json.total);
         setTotalPages(json.totalPages);
+        if (json.stats) {
+          setStats(json.stats);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -323,10 +351,46 @@ export default function PerikananClientView() {
     setFormKapasitas(item.kapasitasBenih ? String(item.kapasitasBenih) : "5000");
     setFormLat(item.latitude ? String(item.latitude) : "");
     setFormLng(item.longitude ? String(item.longitude) : "");
-    setFormStatus(item.status);
+    setFormStatus((item as any).statusUsaha || item.status);
     setFormDeskripsi(item.deskripsi || "");
     setFormFotoUrl(item.foto?.[0]?.url || "");
     setModalOpen(true);
+  };
+
+  const getStatusBadge = (status?: string) => {
+    switch (status) {
+      case "AKTIF":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <CheckCircle2 size={10} /> Aktif
+          </span>
+        );
+      case "ISTIRAHAT":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+            <Clock size={10} /> Istirahat
+          </span>
+        );
+      case "GAGAL_PANEN":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+            <AlertTriangle size={10} /> Gagal Panen
+          </span>
+        );
+      case "NON_AKTIF":
+      case "NONAKTIF":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-300">
+            <XCircle size={10} /> Non Aktif
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-50 text-slate-700 border border-slate-200">
+            {status || "-"}
+          </span>
+        );
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -411,6 +475,132 @@ export default function PerikananClientView() {
           </button>
         </div>
       )}
+
+      {/* 6 KPI Stats Cards Perikanan */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {/* Total Kolam & Luas */}
+        <div
+          onClick={() => setSelectedStatus("semua")}
+          className={`bg-white rounded-2xl p-4 border transition cursor-pointer shadow-xs hover:shadow-md ${
+            selectedStatus === "semua"
+              ? "border-sky-500 ring-2 ring-sky-500/20 bg-sky-50/20"
+              : "border-slate-200/80 hover:border-sky-300"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Usaha</span>
+            <div className="w-8 h-8 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center">
+              <Fish size={16} />
+            </div>
+          </div>
+          <div className="text-xl font-extrabold text-slate-900 tracking-tight">
+            {stats.totalKolam.toLocaleString("id-ID")}
+          </div>
+          <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
+            <span>{stats.totalLuasM2.toLocaleString("id-ID")} m²</span>
+            <span>•</span>
+            <span>{stats.totalPetak} Petak</span>
+          </p>
+        </div>
+
+        {/* Komoditas Ikan */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Komoditas Ikan</span>
+            <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+              <Layers size={16} />
+            </div>
+          </div>
+          <div className="text-xl font-extrabold text-indigo-950 tracking-tight">
+            {stats.totalKomoditas}
+          </div>
+          <p className="text-[10px] text-slate-500 mt-1">Jenis Ikan Terdata</p>
+        </div>
+
+        {/* Kolam Aktif */}
+        <div
+          onClick={() => setSelectedStatus(selectedStatus === "AKTIF" ? "semua" : "AKTIF")}
+          className={`bg-white rounded-2xl p-4 border transition cursor-pointer shadow-xs hover:shadow-md ${
+            selectedStatus === "AKTIF"
+              ? "border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20"
+              : "border-slate-200/80 hover:border-emerald-300"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Kolam Aktif</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+              <CheckCircle2 size={16} />
+            </div>
+          </div>
+          <div className="text-xl font-extrabold text-emerald-700 tracking-tight">
+            {stats.statusAktif.toLocaleString("id-ID")}
+          </div>
+          <p className="text-[10px] text-emerald-600/80 mt-1">Beroperasi & Panen</p>
+        </div>
+
+        {/* Istirahat */}
+        <div
+          onClick={() => setSelectedStatus(selectedStatus === "ISTIRAHAT" ? "semua" : "ISTIRAHAT")}
+          className={`bg-white rounded-2xl p-4 border transition cursor-pointer shadow-xs hover:shadow-md ${
+            selectedStatus === "ISTIRAHAT"
+              ? "border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/20"
+              : "border-slate-200/80 hover:border-amber-300"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Masa Istirahat</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+              <Clock size={16} />
+            </div>
+          </div>
+          <div className="text-xl font-extrabold text-amber-700 tracking-tight">
+            {stats.statusIstirahat.toLocaleString("id-ID")}
+          </div>
+          <p className="text-[10px] text-amber-600/80 mt-1">Pengeringan / Rehat</p>
+        </div>
+
+        {/* Gagal Panen */}
+        <div
+          onClick={() => setSelectedStatus(selectedStatus === "GAGAL_PANEN" ? "semua" : "GAGAL_PANEN")}
+          className={`bg-white rounded-2xl p-4 border transition cursor-pointer shadow-xs hover:shadow-md ${
+            selectedStatus === "GAGAL_PANEN"
+              ? "border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/20"
+              : "border-slate-200/80 hover:border-rose-300"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Gagal Panen</span>
+            <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center">
+              <AlertTriangle size={16} />
+            </div>
+          </div>
+          <div className="text-xl font-extrabold text-rose-700 tracking-tight">
+            {stats.statusGagalPanen.toLocaleString("id-ID")}
+          </div>
+          <p className="text-[10px] text-rose-600/80 mt-1">Penyakit / Bencana</p>
+        </div>
+
+        {/* Non Aktif */}
+        <div
+          onClick={() => setSelectedStatus(selectedStatus === "NON_AKTIF" ? "semua" : "NON_AKTIF")}
+          className={`bg-white rounded-2xl p-4 border transition cursor-pointer shadow-xs hover:shadow-md ${
+            selectedStatus === "NON_AKTIF"
+              ? "border-slate-500 ring-2 ring-slate-500/20 bg-slate-50"
+              : "border-slate-200/80 hover:border-slate-400"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Non Aktif</span>
+            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
+              <XCircle size={16} />
+            </div>
+          </div>
+          <div className="text-xl font-extrabold text-slate-700 tracking-tight">
+            {stats.statusNonAktif.toLocaleString("id-ID")}
+          </div>
+          <p className="text-[10px] text-slate-500 mt-1">Terbengkalai / Tutup</p>
+        </div>
+      </div>
 
       {/* Main Table Card */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 space-y-4">
@@ -501,6 +691,26 @@ export default function PerikananClientView() {
                 </option>
               ))}
             </select>
+
+            {/* Filter Status Usaha */}
+            <select
+              value={selectedStatus}
+              onChange={(e) => {
+                setSelectedStatus(e.target.value);
+                setPage(1);
+              }}
+              className={`text-xs font-semibold rounded-xl px-3 py-2 border transition focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-600 ${
+                selectedStatus !== "semua"
+                  ? "bg-sky-50 border-sky-300 text-sky-800 font-bold"
+                  : "bg-white border-slate-200 text-slate-700"
+              }`}
+            >
+              <option value="semua">Semua Status Usaha</option>
+              <option value="AKTIF">Usaha Aktif</option>
+              <option value="ISTIRAHAT">Masa Istirahat</option>
+              <option value="GAGAL_PANEN">Gagal Panen</option>
+              <option value="NON_AKTIF">Non Aktif</option>
+            </select>
           </div>
 
           {/* Tambah Button */}
@@ -512,6 +722,21 @@ export default function PerikananClientView() {
             <span>Tambah Usaha Kolam</span>
           </button>
         </div>
+
+        {/* Active Filter Indicator */}
+        {selectedStatus !== "semua" && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-sky-50/70 border border-sky-200/80 rounded-xl text-xs">
+            <span className="text-sky-800">
+              Menampilkan status usaha: <strong className="font-bold uppercase">{selectedStatus.replace("_", " ")}</strong>
+            </span>
+            <button
+              onClick={() => setSelectedStatus("semua")}
+              className="text-sky-600 hover:text-sky-900 ml-auto font-bold flex items-center gap-1 hover:underline"
+            >
+              <X size={13} /> Reset Filter
+            </button>
+          </div>
+        )}
 
         {/* Table */}
         <div className="overflow-x-auto rounded-xl border border-slate-100">
@@ -584,9 +809,7 @@ export default function PerikananClientView() {
                       {k.kapasitasBenih ? `${k.kapasitasBenih} Ekor` : "-"}
                     </td>
                     <td className="p-3.5 text-center">
-                      <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
-                        {k.status}
-                      </span>
+                      {getStatusBadge((k as any).statusUsaha || k.status)}
                     </td>
                     <td className="p-3.5 text-right">
                       <div className="flex items-center justify-end gap-1.5">

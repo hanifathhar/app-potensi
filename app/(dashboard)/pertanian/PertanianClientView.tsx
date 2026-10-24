@@ -23,6 +23,10 @@ import {
   Image as ImageIcon,
   Users,
   Eye,
+  Layers,
+  Clock,
+  AlertTriangle,
+  XCircle,
 } from "lucide-react";
 import { useAuthority } from "@/hooks/useAuthority";
 import LocationPicker from "@/components/potensi/LocationPicker";
@@ -45,6 +49,7 @@ interface KebunItem {
   kondisiTanaman?: string;
   statusLahan?: string;
   status: string;
+  statusUsaha?: string;
   deskripsi?: string;
   foto?: { id?: string; url: string; judul?: string; jenisFoto?: string }[];
   kecamatan?: { nm_kecamatan: string };
@@ -81,6 +86,25 @@ export default function PertanianClientView() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+
+  // Statistics
+  const [stats, setStats] = useState<{
+    totalKebun: number;
+    totalLuasHa: number;
+    totalKomoditas: number;
+    statusAktif: number;
+    statusIstirahat: number;
+    statusGagalPanen: number;
+    statusNonAktif: number;
+  }>({
+    totalKebun: 0,
+    totalLuasHa: 0,
+    totalKomoditas: 0,
+    statusAktif: 0,
+    statusIstirahat: 0,
+    statusGagalPanen: 0,
+    statusNonAktif: 0,
+  });
 
   // Dropdown lists
   const [kecamatanList, setKecamatanList] = useState<{ kd_kecamatan: string; nm_kecamatan: string }[]>([]);
@@ -199,6 +223,9 @@ export default function PertanianClientView() {
         setData(json.data);
         setTotal(json.total);
         setTotalPages(json.totalPages);
+        if (json.stats) {
+          setStats(json.stats);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -318,7 +345,7 @@ export default function PertanianClientView() {
     setFormSistemTanam(item.sistemTanam || "Monokultur");
     setFormLat(item.latitude ? String(item.latitude) : "");
     setFormLng(item.longitude ? String(item.longitude) : "");
-    setFormStatus(item.status);
+    setFormStatus((item as any).statusUsaha || item.status);
     setFormDeskripsi(item.deskripsi || "");
     setFormFotoUrl(item.foto?.[0]?.url || "");
     setModalOpen(true);
@@ -404,6 +431,197 @@ export default function PertanianClientView() {
           </button>
         </div>
       )}
+
+      {/* KPI Stats Cards - Usaha Kebun, Komoditas, & Status Usaha/Lahan */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+        {/* Card 1: Total Kebun / Lahan */}
+        <div
+          onClick={() => {
+            setSelectedStatus("semua");
+            setPage(1);
+          }}
+          className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden group ${
+            selectedStatus === "semua"
+              ? "bg-gradient-to-br from-emerald-50/90 to-white border-emerald-300 ring-2 ring-emerald-500/20 shadow-xs"
+              : "bg-white border-slate-200/80 hover:border-emerald-200 hover:shadow-2xs"
+          }`}
+          title="Klik untuk melihat semua data kebun"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-600 truncate">Total Kebun</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+              <Sprout size={16} />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-xl font-black text-slate-900 tracking-tight">
+              {stats.totalKebun.toLocaleString("id-ID")}
+            </span>
+            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded-md">
+              Lahan
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-500 mt-1 truncate">
+            {stats.totalLuasHa.toLocaleString("id-ID", { maximumFractionDigits: 1 })} Ha Luas Lahan
+          </p>
+        </div>
+
+        {/* Card 2: Komoditas Diinput */}
+        <div
+          className="p-3.5 rounded-2xl border border-slate-200/80 bg-white shadow-2xs relative overflow-hidden group"
+          title="Jumlah jenis komoditas yang diinput"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-600 truncate">Komoditas Diinput</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+              <Layers size={16} />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-xl font-black text-slate-900 tracking-tight">
+              {stats.totalKomoditas}
+            </span>
+            <span className="text-[10px] font-semibold text-amber-700 bg-amber-100/70 px-1.5 py-0.5 rounded-md">
+              Jenis
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-500 mt-1 truncate">
+            {komoditasList.length > 0 ? `${komoditasList.length} Terdaftar` : "Komoditas Kebun"}
+          </p>
+        </div>
+
+        {/* Card 3: Usaha / Lahan Aktif */}
+        <div
+          onClick={() => {
+            setSelectedStatus(selectedStatus === "AKTIF" ? "semua" : "AKTIF");
+            setPage(1);
+          }}
+          className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden group ${
+            selectedStatus === "AKTIF"
+              ? "bg-gradient-to-br from-emerald-50/90 to-white border-emerald-300 ring-2 ring-emerald-500/20 shadow-xs"
+              : "bg-white border-slate-200/80 hover:border-emerald-200 hover:shadow-2xs"
+          }`}
+          title="Klik untuk memfilter kebun yang aktif berproduksi"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-600 truncate">Status Aktif</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+              <CheckCircle2 size={16} />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-xl font-black text-slate-900 tracking-tight">
+              {stats.statusAktif.toLocaleString("id-ID")}
+            </span>
+            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded-md">
+              Aktif
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-500 mt-1 truncate flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+            <span>Aktif Berproduksi</span>
+          </p>
+        </div>
+
+        {/* Card 4: Lahan Istirahat */}
+        <div
+          onClick={() => {
+            setSelectedStatus(selectedStatus === "ISTIRAHAT" ? "semua" : "ISTIRAHAT");
+            setPage(1);
+          }}
+          className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden group ${
+            selectedStatus === "ISTIRAHAT"
+              ? "bg-gradient-to-br from-sky-50/90 to-white border-sky-300 ring-2 ring-sky-500/20 shadow-xs"
+              : "bg-white border-slate-200/80 hover:border-sky-200 hover:shadow-2xs"
+          }`}
+          title="Klik untuk memfilter kebun yang sedang istirahat / bera"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-600 truncate">Lahan Istirahat</span>
+            <div className="w-8 h-8 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+              <Clock size={16} />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-xl font-black text-slate-900 tracking-tight">
+              {stats.statusIstirahat.toLocaleString("id-ID")}
+            </span>
+            <span className="text-[10px] font-semibold text-sky-700 bg-sky-100/70 px-1.5 py-0.5 rounded-md">
+              Istirahat
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-500 mt-1 truncate flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0" />
+            <span>Masa Bera / Jeda Tanam</span>
+          </p>
+        </div>
+
+        {/* Card 5: Gagal Panen */}
+        <div
+          onClick={() => {
+            setSelectedStatus(selectedStatus === "GAGAL_PANEN" ? "semua" : "GAGAL_PANEN");
+            setPage(1);
+          }}
+          className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden group ${
+            selectedStatus === "GAGAL_PANEN"
+              ? "bg-gradient-to-br from-rose-50/90 to-white border-rose-300 ring-2 ring-rose-500/20 shadow-xs"
+              : "bg-white border-slate-200/80 hover:border-rose-200 hover:shadow-2xs"
+          }`}
+          title="Klik untuk memfilter kebun yang mengalami gagal panen / puso"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-600 truncate">Gagal Panen</span>
+            <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+              <AlertTriangle size={16} />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-xl font-black text-slate-900 tracking-tight">
+              {stats.statusGagalPanen.toLocaleString("id-ID")}
+            </span>
+            <span className="text-[10px] font-semibold text-rose-700 bg-rose-100/70 px-1.5 py-0.5 rounded-md">
+              Puso
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-500 mt-1 truncate flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+            <span>Puso / Cuaca / Hama</span>
+          </p>
+        </div>
+
+        {/* Card 6: Non Aktif */}
+        <div
+          onClick={() => {
+            setSelectedStatus(selectedStatus === "NON_AKTIF" ? "semua" : "NON_AKTIF");
+            setPage(1);
+          }}
+          className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden group ${
+            selectedStatus === "NON_AKTIF"
+              ? "bg-gradient-to-br from-slate-100 to-white border-slate-400 ring-2 ring-slate-500/20 shadow-xs"
+              : "bg-white border-slate-200/80 hover:border-slate-300 hover:shadow-2xs"
+          }`}
+          title="Klik untuk memfilter kebun yang non aktif"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-600 truncate">Non Aktif</span>
+            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+              <XCircle size={16} />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-xl font-black text-slate-900 tracking-tight">
+              {stats.statusNonAktif.toLocaleString("id-ID")}
+            </span>
+            <span className="text-[10px] font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded-md">
+              Non Aktif
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-500 mt-1 truncate flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
+            <span>Tidak Beroperasi</span>
+          </p>
+        </div>
+      </div>
 
       {/* Main Table Card */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 space-y-4">
@@ -494,17 +712,57 @@ export default function PertanianClientView() {
                 </option>
               ))}
             </select>
+
+            {/* Filter Status Usaha */}
+            <select
+              value={selectedStatus}
+              onChange={(e) => {
+                setSelectedStatus(e.target.value);
+                setPage(1);
+              }}
+              className="text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+            >
+              <option value="semua">Semua Status Usaha</option>
+              <option value="AKTIF">Aktif</option>
+              <option value="ISTIRAHAT">Istirahat</option>
+              <option value="GAGAL_PANEN">Gagal Panen</option>
+              <option value="NON_AKTIF">Non Aktif</option>
+            </select>
           </div>
 
           {/* Tambah Button */}
           <button
             onClick={openTambah}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-[#16a34a] hover:bg-emerald-700 text-white shadow-xs transition"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-[#16a34a] hover:bg-emerald-700 text-white shadow-xs transition shrink-0"
           >
             <Plus size={15} />
             <span>Tambah Usaha Kebun</span>
           </button>
         </div>
+
+        {/* Active Filter Indicator */}
+        {selectedStatus !== "semua" && (
+          <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700">
+            <span className="font-semibold text-slate-500">Filter Status:</span>
+            <span className="font-bold text-slate-800">
+              {selectedStatus === "AKTIF" && "Usaha / Lahan Aktif"}
+              {selectedStatus === "ISTIRAHAT" && "Lahan Istirahat (Bera)"}
+              {selectedStatus === "GAGAL_PANEN" && "Gagal Panen (Puso)"}
+              {selectedStatus === "NON_AKTIF" && "Non Aktif"}
+            </span>
+            <span className="text-slate-400">({total} data ditemukan)</span>
+            <button
+              onClick={() => {
+                setSelectedStatus("semua");
+                setPage(1);
+              }}
+              className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded-lg transition"
+            >
+              <X size={12} />
+              <span>Reset Filter</span>
+            </button>
+          </div>
+        )}
 
         {/* Table */}
         <div className="overflow-x-auto rounded-xl border border-slate-100">
@@ -573,9 +831,26 @@ export default function PertanianClientView() {
                       {k.luasLahanHa || "-"} Ha
                     </td>
                     <td className="p-3.5 text-center">
-                      <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        {k.status}
-                      </span>
+                      {(k.statusUsaha || k.status) === "AKTIF" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                          AKTIF
+                        </span>
+                      ) : (k.statusUsaha || k.status) === "ISTIRAHAT" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-sky-600" />
+                          ISTIRAHAT
+                        </span>
+                      ) : (k.statusUsaha || k.status) === "GAGAL_PANEN" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-600" />
+                          GAGAL PANEN
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                          NON AKTIF
+                        </span>
+                      )}
                     </td>
                     <td className="p-3.5 text-right">
                       <div className="flex items-center justify-end gap-1.5">

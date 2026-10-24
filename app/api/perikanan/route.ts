@@ -27,7 +27,25 @@ export async function GET(request: Request) {
 
     const where: any = { ...authorityFilter };
     if (kd_komoditas && kd_komoditas !== "semua") where.kd_komoditas = kd_komoditas;
-    if (status && status !== "semua") where.status = status as StatusData;
+
+    // Filter Status Usaha / Kolam (AKTIF, ISTIRAHAT, GAGAL_PANEN, NON_AKTIF)
+    if (status && status !== "semua") {
+      if (status === "ISTIRAHAT") {
+        where.kondisiKolam = "Istirahat";
+      } else if (status === "GAGAL_PANEN") {
+        where.kondisiKolam = "Gagal Panen";
+      } else if (status === "NON_AKTIF" || status === "NONAKTIF") {
+        where.OR = [
+          { status: "NONAKTIF" },
+          { kondisiKolam: "Non Aktif" },
+        ];
+      } else if (status === "AKTIF") {
+        where.status = "AKTIF";
+        where.NOT = {
+          kondisiKolam: { in: ["Istirahat", "Gagal Panen", "Non Aktif"] },
+        };
+      }
+    }
 
     if (search) {
       where.OR = [
@@ -37,7 +55,22 @@ export async function GET(request: Request) {
       ];
     }
 
-    const [total, data] = await Promise.all([
+    // Stats territory filter
+    const statsWhere: any = { ...authorityFilter };
+    if (kd_kecamatan && kd_kecamatan !== "semua") statsWhere.kd_kecamatan = kd_kecamatan;
+    if (kd_desa && kd_desa !== "semua") statsWhere.kd_desa = kd_desa;
+
+    const [
+      total,
+      data,
+      totalKolam,
+      aggregateStats,
+      komoditasDistinct,
+      statusAktif,
+      statusIstirahat,
+      statusGagalPanen,
+      statusNonAktif,
+    ] = await Promise.all([
       prisma.kolam.count({ where }),
       prisma.kolam.findMany({
         where,
@@ -52,15 +85,63 @@ export async function GET(request: Request) {
           foto: true,
         },
       }),
+      prisma.kolam.count({ where: statsWhere }),
+      prisma.kolam.aggregate({
+        where: statsWhere,
+        _sum: { luasKolamM2: true, jumlahKolam: true },
+      }),
+      prisma.kolam.groupBy({ by: ["kd_komoditas"], where: statsWhere, _count: true }),
+      prisma.kolam.count({
+        where: {
+          ...statsWhere,
+          status: "AKTIF",
+          NOT: { kondisiKolam: { in: ["Istirahat", "Gagal Panen", "Non Aktif"] } },
+        },
+      }),
+      prisma.kolam.count({
+        where: { ...statsWhere, kondisiKolam: "Istirahat" },
+      }),
+      prisma.kolam.count({
+        where: { ...statsWhere, kondisiKolam: "Gagal Panen" },
+      }),
+      prisma.kolam.count({
+        where: {
+          ...statsWhere,
+          OR: [{ status: "NONAKTIF" }, { kondisiKolam: "Non Aktif" }],
+        },
+      }),
     ]);
+
+    // Format data with normalized statusUsaha
+    const formattedData = data.map((item) => {
+      let statusUsaha = "AKTIF";
+      if (item.kondisiKolam === "Istirahat") statusUsaha = "ISTIRAHAT";
+      else if (item.kondisiKolam === "Gagal Panen") statusUsaha = "GAGAL_PANEN";
+      else if (item.status === "NONAKTIF" || item.kondisiKolam === "Non Aktif") statusUsaha = "NON_AKTIF";
+      else if (item.status === "AKTIF") statusUsaha = "AKTIF";
+      return {
+        ...item,
+        statusUsaha,
+      };
+    });
 
     return NextResponse.json({
       success: true,
-      data,
+      data: formattedData,
       total,
       page,
       totalPages: Math.ceil(total / limit),
       currentUser: user,
+      stats: {
+        totalKolam,
+        totalLuasM2: Number(aggregateStats._sum.luasKolamM2 || 0),
+        totalPetak: aggregateStats._sum.jumlahKolam || 0,
+        totalKomoditas: komoditasDistinct.length,
+        statusAktif,
+        statusIstirahat,
+        statusGagalPanen,
+        statusNonAktif,
+      },
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -95,6 +176,7 @@ export async function POST(request: Request) {
       sistemBudidaya,
       kapasitasBenih,
       deskripsi,
+      kondisiKolam,
       status,
       fotoUrl,
     } = body;
@@ -121,6 +203,27 @@ export async function POST(request: Request) {
       );
     }
 
+    // Normalisasi status usaha
+    let dbStatus: StatusData = "AKTIF";
+    let dbKondisiKolam = kondisiKolam || "Baik";
+    if (status === "ISTIRAHAT") {
+      dbStatus = "AKTIF";
+      dbKondisiKolam = "Istirahat";
+    } else if (status === "GAGAL_PANEN") {
+      dbStatus = "AKTIF";
+      dbKondisiKolam = "Gagal Panen";
+    } else if (status === "NON_AKTIF" || status === "NONAKTIF") {
+      dbStatus = "NONAKTIF";
+      dbKondisiKolam = "Non Aktif";
+    } else if (status === "AKTIF") {
+      dbStatus = "AKTIF";
+      if (["Istirahat", "Gagal Panen", "Non Aktif"].includes(dbKondisiKolam)) {
+        dbKondisiKolam = "Baik";
+      }
+    } else if (status) {
+      dbStatus = status as StatusData;
+    }
+
     const created = await prisma.kolam.create({
       data: {
         kd_kolam,
@@ -140,7 +243,8 @@ export async function POST(request: Request) {
         sistemBudidaya,
         kapasitasBenih: kapasitasBenih ? parseFloat(kapasitasBenih) : null,
         deskripsi,
-        status: (status as StatusData) || "AKTIF",
+        kondisiKolam: dbKondisiKolam,
+        status: dbStatus,
         foto: fotoUrl
           ? {
               create: {
@@ -189,6 +293,7 @@ export async function PUT(request: Request) {
       sistemBudidaya,
       kapasitasBenih,
       deskripsi,
+      kondisiKolam,
       status,
       fotoUrl,
     } = body;
@@ -207,6 +312,29 @@ export async function PUT(request: Request) {
         { success: false, error: "Akses Ditolak: Anda tidak memiliki otoritas mengubah data di wilayah ini." },
         { status: 403 }
       );
+    }
+
+    // Normalisasi status usaha jika status dikirimkan
+    let dbStatus: StatusData | undefined = undefined;
+    let dbKondisiKolam = kondisiKolam;
+    if (status !== undefined) {
+      if (status === "ISTIRAHAT") {
+        dbStatus = "AKTIF";
+        dbKondisiKolam = "Istirahat";
+      } else if (status === "GAGAL_PANEN") {
+        dbStatus = "AKTIF";
+        dbKondisiKolam = "Gagal Panen";
+      } else if (status === "NON_AKTIF" || status === "NONAKTIF") {
+        dbStatus = "NONAKTIF";
+        dbKondisiKolam = "Non Aktif";
+      } else if (status === "AKTIF") {
+        dbStatus = "AKTIF";
+        if (dbKondisiKolam === "Istirahat" || dbKondisiKolam === "Gagal Panen" || dbKondisiKolam === "Non Aktif") {
+          dbKondisiKolam = "Baik";
+        }
+      } else {
+        dbStatus = status as StatusData;
+      }
     }
 
     const updated = await prisma.kolam.update({
@@ -229,7 +357,8 @@ export async function PUT(request: Request) {
         sistemBudidaya,
         kapasitasBenih: kapasitasBenih !== undefined ? (kapasitasBenih ? parseFloat(kapasitasBenih) : null) : undefined,
         deskripsi,
-        status: status as StatusData,
+        kondisiKolam: dbKondisiKolam !== undefined ? dbKondisiKolam : undefined,
+        status: dbStatus !== undefined ? dbStatus : undefined,
       },
     });
 
