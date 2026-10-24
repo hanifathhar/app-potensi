@@ -123,23 +123,29 @@ const LeafletMapInner = ({
   pins,
   center,
   zoom,
+  scrollWheelZoom = false,
   onSelectPhoto,
   onSelectDetail,
 }: {
   pins: MapPinItem[];
   center: [number, number];
   zoom: number;
+  scrollWheelZoom?: boolean;
   onSelectPhoto?: (item: { url: string; title: string; subtitle: string }) => void;
   onSelectDetail?: (item: MapPinItem) => void;
 }) => {
   const { MapContainer, TileLayer, Marker, Popup, useMap } = require("react-leaflet");
   const L = require("leaflet");
 
-  // Center update controller with smooth flyTo animation
+  // Center update controller with smooth flyTo animation & invalidateSize for modal
   function ChangeView({ center, zoom }: { center: [number, number]; zoom: number }) {
     const map = useMap();
     useEffect(() => {
+      const timer = setTimeout(() => {
+        map.invalidateSize();
+      }, 150);
       map.flyTo(center, zoom, { duration: 0.8 });
+      return () => clearTimeout(timer);
     }, [center, zoom, map]);
     return null;
   }
@@ -193,7 +199,7 @@ const LeafletMapInner = ({
       maxZoom={TAPSEL_MAX_ZOOM}
       maxBounds={TAPSEL_BOUNDS}
       maxBoundsViscosity={1.0}
-      scrollWheelZoom={false}
+      scrollWheelZoom={scrollWheelZoom}
       style={{ height: "100%", width: "100%", zIndex: 10 }}
     >
       <ChangeView center={center} zoom={zoom} />
@@ -406,6 +412,24 @@ export default function PotensiMap({
   } | null>(null);
 
   const [selectedDetail, setSelectedDetail] = useState<MapPinItem | null>(null);
+  const [isExpandedModalOpen, setIsExpandedModalOpen] = useState(false);
+
+  // Keyboard shortcut: ESC untuk menutup modal pop up
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (selectedPhotoModal) {
+          setSelectedPhotoModal(null);
+        } else if (selectedDetail) {
+          setSelectedDetail(null);
+        } else if (isExpandedModalOpen) {
+          setIsExpandedModalOpen(false);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isExpandedModalOpen, selectedPhotoModal, selectedDetail]);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col h-[520px]">
@@ -423,6 +447,17 @@ export default function PotensiMap({
 
         {/* Dropdown Filters & Quick Reset Button */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Tombol Perbesar Peta (Pop up peta sebaran yang lebih besar) */}
+          <button
+            type="button"
+            onClick={() => setIsExpandedModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 border border-slate-200 rounded-xl transition shadow-2xs cursor-pointer"
+            title="Tampilkan peta sebaran dalam pop up lebih besar"
+          >
+            <Maximize2 size={13} className="text-emerald-600" />
+            <span>Perbesar Peta</span>
+          </button>
+
           {/* Tombol Reset Fokus Wilayah Tapsel */}
           <button
             type="button"
@@ -537,7 +572,7 @@ export default function PotensiMap({
       {selectedPhotoModal && (
         <div
           onClick={() => setSelectedPhotoModal(null)}
-          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-[60] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -580,7 +615,7 @@ export default function PotensiMap({
       {selectedDetail && (
         <div
           onClick={() => setSelectedDetail(null)}
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
+          className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -775,6 +810,162 @@ export default function PotensiMap({
                 >
                   Tutup
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          MODAL POP-UP PETA SEBARAN LEBIH BESAR (EXPANDED FULLSCREEN)
+      ======================================================== */}
+      {isExpandedModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-200"
+          onClick={() => setIsExpandedModalOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl shadow-2xl border border-slate-200/90 w-full h-[95vh] max-w-[98vw] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+          >
+            {/* Header Pop-up Modal dengan Toolbar Filter Lengkap */}
+            <div className="p-3.5 sm:px-6 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/90 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 shadow-xs">
+                  <Compass size={22} className="text-emerald-700" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse" />
+                    Peta Sebaran Potensi & Usaha Tani Tapanuli Selatan
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Fokus wilayah Kabupaten Tapanuli Selatan (15 Kecamatan) • {validPins.length} Titik Terdata
+                  </p>
+                </div>
+              </div>
+
+              {/* Toolbar Filter & Tombol Tutup */}
+              <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                {/* Tombol Reset Fokus Wilayah Tapsel */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedKecamatan("semua");
+                    if (setSelectedDesa) setSelectedDesa("semua");
+                    setSelectedJenis("semua");
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition shadow-2xs cursor-pointer"
+                  title="Kembalikan peta ke fokus wilayah Kabupaten Tapanuli Selatan"
+                >
+                  <Compass size={13} className="text-emerald-700" />
+                  <span>Fokus Tapsel</span>
+                </button>
+
+                {/* Filter Kecamatan */}
+                <div className="relative">
+                  <select
+                    value={selectedKecamatan}
+                    onChange={(e) => {
+                      setSelectedKecamatan(e.target.value);
+                      if (setSelectedDesa) setSelectedDesa("semua");
+                    }}
+                    className="text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 cursor-pointer shadow-2xs"
+                  >
+                    <option value="semua">Semua Kecamatan ({kecamatanList.length || 15})</option>
+                    {kecamatanList.map((k) => (
+                      <option key={k.kd_kecamatan} value={k.nm_kecamatan}>
+                        {k.nm_kecamatan}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Filter Desa (Tampil jika kecamatan dipilih) */}
+                {selectedKecamatan !== "semua" && desaOptions.length > 0 && setSelectedDesa && (
+                  <div className="relative">
+                    <select
+                      value={selectedDesa}
+                      onChange={(e) => setSelectedDesa(e.target.value)}
+                      className="text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 cursor-pointer shadow-2xs"
+                    >
+                      <option value="semua">Semua Desa ({desaOptions.length})</option>
+                      {desaOptions.map((desa) => (
+                        <option key={desa} value={desa}>
+                          {desa}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Filter Jenis Usaha */}
+                <div className="relative">
+                  <select
+                    value={selectedJenis}
+                    onChange={(e) => setSelectedJenis(e.target.value)}
+                    className="text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 cursor-pointer shadow-2xs"
+                  >
+                    <option value="semua">Semua Jenis Usaha</option>
+                    <option value="kebun">Kebun (Pertanian)</option>
+                    <option value="kolam">Kolam (Perikanan)</option>
+                    <option value="peternakan">Peternakan</option>
+                  </select>
+                </div>
+
+                {/* Tombol Tutup Pop-Up */}
+                <button
+                  type="button"
+                  onClick={() => setIsExpandedModalOpen(false)}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-red-50 hover:text-red-700 hover:border-red-300 border border-slate-200 rounded-xl transition shadow-2xs cursor-pointer"
+                  title="Tutup pop up peta besar (Esc)"
+                >
+                  <X size={15} />
+                  <span>Tutup</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Area Peta Lebih Besar (Full Dimension) */}
+            <div className="relative flex-1 w-full overflow-hidden">
+              {mounted && (
+                <DynamicLeafletMap
+                  pins={validPins}
+                  center={activeCenter}
+                  zoom={activeZoom}
+                  scrollWheelZoom={true}
+                  onSelectPhoto={setSelectedPhotoModal}
+                  onSelectDetail={setSelectedDetail}
+                />
+              )}
+
+              {/* Status Badge Wilayah Tapsel di Pojok Kiri Bawah */}
+              <div className="absolute bottom-4 left-4 z-20 bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-xl shadow-lg border border-slate-200/90 text-xs font-semibold text-slate-700 flex items-center gap-2 pointer-events-none">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>
+                  Wilayah: <strong>Kabupaten Tapanuli Selatan</strong>{" "}
+                  {selectedKecamatan !== "semua" ? `• Kec. ${selectedKecamatan}` : "• 15 Kecamatan"}
+                </span>
+              </div>
+
+              {/* Legend Box Pojok Kanan Atas */}
+              <div className="absolute top-4 right-4 z-20 bg-white/95 backdrop-blur-md rounded-2xl p-3 shadow-lg border border-slate-200 text-xs font-medium space-y-2 pointer-events-auto">
+                <div className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 rounded-full bg-[#16a34a] border border-white shadow-2xs" />
+                  <span className="text-slate-800 font-bold">Kebun</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 rounded-full bg-[#0284c7] border border-white shadow-2xs" />
+                  <span className="text-slate-800 font-bold">Kolam</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 rounded-full bg-[#ea580c] border border-white shadow-2xs" />
+                  <span className="text-slate-800 font-bold">Peternakan</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 rounded-full bg-[#9333ea] border border-white shadow-2xs" />
+                  <span className="text-slate-800 font-bold">Kelompok Tani</span>
+                </div>
               </div>
             </div>
           </div>

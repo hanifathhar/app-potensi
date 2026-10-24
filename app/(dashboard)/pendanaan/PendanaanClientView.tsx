@@ -24,6 +24,7 @@ import {
   RotateCcw,
   Layers,
   X,
+  Beef,
 } from "lucide-react";
 import { useAuthority } from "@/hooks/useAuthority";
 
@@ -47,6 +48,22 @@ interface PendanaanItem {
   danaDicairkan?: number;
   status: string;
   keterangan?: string;
+}
+
+interface SectorStat {
+  jumlahPenerima: number;
+  totalUnitUnik: number;
+  nilaiDicairkan: number;
+  nilaiDisetujui: number;
+  nilaiDiajukan: number;
+}
+
+interface PendanaanStats {
+  tahun: string;
+  total: SectorStat;
+  pertanian: SectorStat;
+  perikanan: SectorStat;
+  peternakan: SectorStat;
 }
 
 interface UnitOption {
@@ -112,6 +129,14 @@ export default function PendanaanClientView({ initialUnits }: Props) {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+
+  const [stats, setStats] = useState<PendanaanStats>({
+    tahun: currentYear,
+    total: { jumlahPenerima: 0, totalUnitUnik: 0, nilaiDicairkan: 0, nilaiDisetujui: 0, nilaiDiajukan: 0 },
+    pertanian: { jumlahPenerima: 0, totalUnitUnik: 0, nilaiDicairkan: 0, nilaiDisetujui: 0, nilaiDiajukan: 0 },
+    perikanan: { jumlahPenerima: 0, totalUnitUnik: 0, nilaiDicairkan: 0, nilaiDisetujui: 0, nilaiDiajukan: 0 },
+    peternakan: { jumlahPenerima: 0, totalUnitUnik: 0, nilaiDicairkan: 0, nilaiDisetujui: 0, nilaiDiajukan: 0 },
+  });
 
   // Wilayah lists
   const [kecamatanList, setKecamatanList] = useState<{ kd_kecamatan: string; nm_kecamatan: string }[]>([]);
@@ -203,6 +228,9 @@ export default function PendanaanClientView({ initialUnits }: Props) {
         setData(filtered);
         setTotalPages(json.totalPages || 1);
         setTotalItems(json.total || 0);
+        if (json.stats) {
+          setStats(json.stats);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -561,6 +589,155 @@ export default function PendanaanClientView({ initialUnits }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* 4 KPI Summary Cards Pendanaan & Bantuan Usaha */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Total Seluruh Penerima Bantuan */}
+        <div
+          onClick={() => {
+            setJenisUnitFilter("semua");
+            setPage(1);
+          }}
+          className={`bg-white rounded-2xl p-5 border transition cursor-pointer shadow-xs hover:shadow-md relative overflow-hidden group ${
+            jenisUnitFilter === "semua"
+              ? "border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/15"
+              : "border-slate-200/80 hover:border-emerald-300"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Total Seluruh Bantuan {stats.tahun !== "semua" ? `(TA ${stats.tahun})` : "(Semua Tahun)"}
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-110 transition-transform">
+              <Coins size={18} />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="text-2xl font-black text-slate-900 tracking-tight">
+              {stats.total.jumlahPenerima.toLocaleString("id-ID")}{" "}
+              <span className="text-xs font-bold text-emerald-700">Penerima</span>
+            </div>
+            <div className="text-sm font-extrabold text-emerald-700">
+              {formatRupiah(stats.total.nilaiDicairkan)}
+            </div>
+          </div>
+          <div className="pt-2.5 mt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
+            <span>{stats.total.totalUnitUnik} Unit Usaha Terdata</span>
+            <span title="Total Pagu Pengajuan">Pagu: {formatRupiah(stats.total.nilaiDiajukan)}</span>
+          </div>
+        </div>
+
+        {/* Card 2: Sektor Pertanian (Kebun) */}
+        {!isPerikananAdmin && (
+          <div
+            onClick={() => {
+              setJenisUnitFilter(jenisUnitFilter === "KEBUN" ? "semua" : "KEBUN");
+              setPage(1);
+            }}
+            className={`bg-white rounded-2xl p-5 border transition cursor-pointer shadow-xs hover:shadow-md relative overflow-hidden group ${
+              jenisUnitFilter === "KEBUN"
+                ? "border-lime-500 ring-2 ring-lime-500/20 bg-lime-50/20"
+                : "border-slate-200/80 hover:border-lime-300"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                Sektor Pertanian (Kebun)
+              </span>
+              <div className="w-9 h-9 rounded-xl bg-lime-100 text-lime-800 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-110 transition-transform">
+                <Sprout size={18} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-2xl font-black text-slate-900 tracking-tight">
+                {stats.pertanian.jumlahPenerima.toLocaleString("id-ID")}{" "}
+                <span className="text-xs font-bold text-lime-700">Penerima</span>
+              </div>
+              <div className="text-sm font-extrabold text-lime-800">
+                {formatRupiah(stats.pertanian.nilaiDicairkan)}
+              </div>
+            </div>
+            <div className="pt-2.5 mt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
+              <span>{stats.pertanian.totalUnitUnik} Kebun Penerima</span>
+              <span title="Total Pagu Pengajuan">Pagu: {formatRupiah(stats.pertanian.nilaiDiajukan)}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Card 3: Sektor Perikanan (Kolam) */}
+        {!isPertanianAdmin && (
+          <div
+            onClick={() => {
+              setJenisUnitFilter(jenisUnitFilter === "KOLAM" ? "semua" : "KOLAM");
+              setPage(1);
+            }}
+            className={`bg-white rounded-2xl p-5 border transition cursor-pointer shadow-xs hover:shadow-md relative overflow-hidden group ${
+              jenisUnitFilter === "KOLAM"
+                ? "border-sky-500 ring-2 ring-sky-500/20 bg-sky-50/20"
+                : "border-slate-200/80 hover:border-sky-300"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                Sektor Perikanan (Kolam)
+              </span>
+              <div className="w-9 h-9 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-110 transition-transform">
+                <Fish size={18} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-2xl font-black text-slate-900 tracking-tight">
+                {stats.perikanan.jumlahPenerima.toLocaleString("id-ID")}{" "}
+                <span className="text-xs font-bold text-sky-700">Penerima</span>
+              </div>
+              <div className="text-sm font-extrabold text-sky-800">
+                {formatRupiah(stats.perikanan.nilaiDicairkan)}
+              </div>
+            </div>
+            <div className="pt-2.5 mt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
+              <span>{stats.perikanan.totalUnitUnik} Kolam Penerima</span>
+              <span title="Total Pagu Pengajuan">Pagu: {formatRupiah(stats.perikanan.nilaiDiajukan)}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Card 4: Sektor Peternakan */}
+        {!isPerikananAdmin && (
+          <div
+            onClick={() => {
+              setJenisUnitFilter(jenisUnitFilter === "PETERNAKAN" ? "semua" : "PETERNAKAN");
+              setPage(1);
+            }}
+            className={`bg-white rounded-2xl p-5 border transition cursor-pointer shadow-xs hover:shadow-md relative overflow-hidden group ${
+              jenisUnitFilter === "PETERNAKAN"
+                ? "border-orange-500 ring-2 ring-orange-500/20 bg-orange-50/20"
+                : "border-slate-200/80 hover:border-orange-300"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                Sektor Peternakan
+              </span>
+              <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-110 transition-transform">
+                <Beef size={18} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-2xl font-black text-slate-900 tracking-tight">
+                {stats.peternakan.jumlahPenerima.toLocaleString("id-ID")}{" "}
+                <span className="text-xs font-bold text-orange-700">Penerima</span>
+              </div>
+              <div className="text-sm font-extrabold text-orange-800">
+                {formatRupiah(stats.peternakan.nilaiDicairkan)}
+              </div>
+            </div>
+            <div className="pt-2.5 mt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
+              <span>{stats.peternakan.totalUnitUnik} Peternakan Penerima</span>
+              <span title="Total Pagu Pengajuan">Pagu: {formatRupiah(stats.peternakan.nilaiDiajukan)}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Search & Filter Header Panel */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         {/* Top Action Bar */}

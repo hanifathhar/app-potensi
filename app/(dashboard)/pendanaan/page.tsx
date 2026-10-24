@@ -1,9 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import PendanaanClientView from "./PendanaanClientView";
-import { Coins, CheckCircle, Clock, AlertCircle } from "lucide-react";
 
 export default async function PendanaanPage() {
-  const [kebuns, kolams, ternaks, danaKebun, danaKolam, danaTernak] = await Promise.all([
+  const [kebuns, kolams, ternaks] = await Promise.all([
     prisma.kebun.findMany({
       include: { desa: true, kecamatan: true },
       orderBy: { nama: "asc" },
@@ -15,15 +14,6 @@ export default async function PendanaanPage() {
     prisma.peternakan.findMany({
       include: { desa: true, kecamatan: true },
       orderBy: { nm_peternakan: "asc" },
-    }),
-    prisma.pendanaanKebun.findMany({
-      select: { danaDiajukan: true, danaDicairkan: true },
-    }),
-    prisma.pendanaanKolam.findMany({
-      select: { danaDiajukan: true, danaDicairkan: true },
-    }),
-    prisma.pendanaanPeternakan.findMany({
-      select: { danaDiajukan: true, danaDicairkan: true },
     }),
   ]);
 
@@ -62,26 +52,6 @@ export default async function PendanaanPage() {
       lokasi: `Kec. ${t.kecamatan?.nm_kecamatan || "-"}, Desa ${t.desa?.nm_desa || "-"}`,
     })),
   ];
-
-  const totalDiajukan = [
-    ...danaKebun,
-    ...danaKolam,
-    ...danaTernak,
-  ].reduce((acc, curr) => acc + Number(curr.danaDiajukan || 0), 0);
-
-  const totalDicairkan = [
-    ...danaKebun,
-    ...danaKolam,
-    ...danaTernak,
-  ].reduce((acc, curr) => acc + Number(curr.danaDicairkan || 0), 0);
-
-  const formatRupiah = (val: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      maximumFractionDigits: 0,
-    }).format(val);
-  };
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">

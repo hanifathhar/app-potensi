@@ -320,7 +320,7 @@ export default function DashboardPerikananView({
     ];
   }, [komoditasList]);
 
-  const totalKomoditasCount = detail.jumlahKomoditas !== undefined ? detail.jumlahKomoditas : donutKomoditasData.length;
+  const totalKomoditasCount = typeof detail.jumlahKomoditas === "number" ? detail.jumlahKomoditas : 0;
 
   // 3. Titik Peta Sebaran Kolam Perikanan
   const mapPins: MapPointItem[] = detail.mapPinsPerikanan || [];

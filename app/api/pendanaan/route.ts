@@ -119,6 +119,38 @@ export async function GET(request: Request) {
       })),
     ];
 
+    // Hitung statistik penerima & nilai uang berdasarkan tahun anggaran (sesuai filter tahun)
+    let statsData = combined;
+    if (tahun && tahun !== "semua") {
+      statsData = combined.filter((c) => c.tahunAnggaran?.toString() === tahun);
+    }
+
+    const calcSectorStats = (items: typeof combined) => {
+      const jumlahPenerima = items.length;
+      const totalUnitUnik = new Set(
+        items.map((i: any) => i.kd_kebun || i.kd_kolam || i.kd_peternakan).filter(Boolean)
+      ).size;
+      const nilaiDicairkan = items.reduce((sum, i: any) => sum + Number(i.danaDicairkan || 0), 0);
+      const nilaiDisetujui = items.reduce((sum, i: any) => sum + Number(i.danaDisetujui || 0), 0);
+      const nilaiDiajukan = items.reduce((sum, i: any) => sum + Number(i.danaDiajukan || 0), 0);
+
+      return {
+        jumlahPenerima,
+        totalUnitUnik,
+        nilaiDicairkan,
+        nilaiDisetujui,
+        nilaiDiajukan,
+      };
+    };
+
+    const stats = {
+      tahun: tahun || "semua",
+      total: calcSectorStats(statsData),
+      pertanian: calcSectorStats(statsData.filter((c) => c.jenisUnit === "KEBUN")),
+      perikanan: calcSectorStats(statsData.filter((c) => c.jenisUnit === "KOLAM")),
+      peternakan: calcSectorStats(statsData.filter((c) => c.jenisUnit === "PETERNAKAN")),
+    };
+
     if (sumberDana && sumberDana !== "semua") {
       combined = combined.filter((c) => c.sumberDana === sumberDana);
     }
@@ -148,6 +180,7 @@ export async function GET(request: Request) {
       page,
       totalPages: Math.ceil(total / limit),
       currentUser: user,
+      stats,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

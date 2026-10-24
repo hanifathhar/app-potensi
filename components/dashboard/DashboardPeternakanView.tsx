@@ -327,7 +327,7 @@ export default function DashboardPeternakanView({
     ];
   }, [komoditasList]);
 
-  const totalKomoditasCount = detail.jumlahKomoditas !== undefined ? detail.jumlahKomoditas : donutKomoditasData.length;
+  const totalKomoditasCount = typeof detail.jumlahKomoditas === "number" ? detail.jumlahKomoditas : 0;
 
   // 3. Titik Peta Sebaran Peternakan
   const mapPins: MapPointItem[] = detail.mapPinsPeternakan || [];
@@ -553,7 +553,7 @@ export default function DashboardPeternakanView({
           <div className="relative z-10 mt-4">
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                {detail.jumlahKomoditas !== undefined ? detail.jumlahKomoditas : 2}
+                {totalKomoditasCount}
               </span>
               <span className="text-sm font-bold text-slate-600">komoditas</span>
             </div>

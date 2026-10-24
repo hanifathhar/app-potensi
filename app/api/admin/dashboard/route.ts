@@ -1294,7 +1294,9 @@ export async function GET(request: Request) {
 
     const pendanaanTerbaruPerikanan = rawPendanaanPerikanan.filter((p: any) => p.tahun === tahunTerkiniPerikanan);
 
-    const totalKomoditasKolamCount = masterKomoditasPerikanan.length || komoditasUnggulan.length;
+    const totalKomoditasKolamCount = populasiIkanPerJenis.filter(
+      (p: any) => (p.unit && p.unit > 0) || (p.populasi && p.populasi > 0)
+    ).length;
 
     const detailPerikanan = {
       totalUnit: totalKolam,
@@ -1609,7 +1611,9 @@ export async function GET(request: Request) {
 
     const pendanaanTerbaruPeternakan = rawPendanaanPeternakan.filter((p: any) => p.tahun === tahunTerkiniPeternakan);
 
-    const totalKomoditasTernakCount = masterKomoditasPeternakan.length || komoditasTernakUntukChart.length;
+    const totalKomoditasTernakCount = populasiPerJenis.filter(
+      (p: any) => (p.unit && p.unit > 0) || (p.populasi && p.populasi > 0)
+    ).length;
 
     const detailPeternakan = {
       totalUnit: totalPeternakan,
