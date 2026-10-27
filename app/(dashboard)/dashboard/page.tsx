@@ -71,6 +71,7 @@ export default function DashboardTaniTapselPage() {
   const [selectedKecamatan, setSelectedKecamatan] = useState<string>("semua");
   const [selectedDesa, setSelectedDesa] = useState<string>("semua");
   const [selectedJenis, setSelectedJenis] = useState<string>("semua");
+  const [selectedKomoditas, setSelectedKomoditas] = useState<string>("semua");
 
   // Fetch Dashboard Data
   const fetchData = async () => {
@@ -754,6 +755,8 @@ export default function DashboardTaniTapselPage() {
               setSelectedDesa={setSelectedDesa}
               selectedJenis={selectedJenis}
               setSelectedJenis={setSelectedJenis}
+              selectedKomoditas={selectedKomoditas}
+              setSelectedKomoditas={setSelectedKomoditas}
             />
           </div>
 

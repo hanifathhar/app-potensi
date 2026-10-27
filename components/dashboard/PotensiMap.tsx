@@ -82,6 +82,8 @@ interface PotensiMapProps {
   setSelectedDesa?: (d: string) => void;
   selectedJenis: string;
   setSelectedJenis: (j: string) => void;
+  selectedKomoditas?: string;
+  setSelectedKomoditas?: (k: string) => void;
 }
 
 // =============================================================================
@@ -119,6 +121,89 @@ export const KECAMATAN_TAPSEL_COORDS: Record<string, { lat: number; lng: number;
   "tano tombangan angkola": { lat: 1.0561, lng: 99.3932, zoom: 12 },
 };
 
+// =============================================================================
+// PALET WARNA & IKON RESMI PER KOMODITAS
+// =============================================================================
+export const KOMODITAS_COLOR_PALETTE: Record<string, { color: string; icon: string }> = {
+  // Pertanian / Kebun
+  "jagung": { color: "#f59e0b", icon: "🌽" }, // Kuning Keemasan Jagung
+  "kopi": { color: "#78350f", icon: "☕" }, // Cokelat Pekat Kopi
+  "kopi arabika": { color: "#78350f", icon: "☕" },
+  "kopi robusta": { color: "#92400e", icon: "☕" },
+  "padi": { color: "#16a34a", icon: "🌾" }, // Hijau Padi
+  "padi sawah": { color: "#16a34a", icon: "🌾" },
+  "kelapa sawit": { color: "#14532d", icon: "🌴" }, // Hijau Pekat Sawit
+  "sawit": { color: "#14532d", icon: "🌴" },
+  "karet": { color: "#4d7c0f", icon: "🌳" }, // Hijau Zaitun Karet
+  "kakao": { color: "#5c2c16", icon: "🍫" }, // Cokelat Kakao
+  "salak": { color: "#9f1239", icon: "🍎" }, // Merah Hati Salak
+  "cabai": { color: "#dc2626", icon: "🌶️" }, // Merah Terang
+  "bawang": { color: "#86198f", icon: "🧅" }, // Ungu Bawang
+
+  // Perikanan / Kolam
+  "ikan mas": { color: "#ff6b00", icon: "🐟" }, // Oranye Ikan Mas
+  "ikan nila": { color: "#0284c7", icon: "🐠" }, // Biru Terang Nila
+  "ikan lele": { color: "#334155", icon: "🐡" }, // Abu Arang / Lele Gelap
+  "ikan tawes": { color: "#0d9488", icon: "🐟" }, // Hijau Toska / Sea Teal
+  "ikan gurami": { color: "#6366f1", icon: "🐠" }, // Nila / Indigo
+  "ikan gurame": { color: "#6366f1", icon: "🐠" },
+  "ikan jurung": { color: "#2563eb", icon: "🐟" }, // Biru Royal
+  "ikan baung": { color: "#8b5cf6", icon: "🐟" }, // Ungu Baung
+  "ikan patin": { color: "#06b6d4", icon: "🐟" }, // Biru Cyan
+  "ikan mujair": { color: "#0891b2", icon: "🐟" },
+
+  // Peternakan
+  "ayam broiler / petelur": { color: "#e11d48", icon: "🐔" }, // Merah Unggas
+  "ayam broiler": { color: "#e11d48", icon: "🐔" },
+  "ayam petelur": { color: "#be123c", icon: "🥚" },
+  "ayam": { color: "#e11d48", icon: "🐔" },
+  "sapi potong": { color: "#9a3412", icon: "🐄" }, // Cokelat Karamel Sapi
+  "sapi": { color: "#9a3412", icon: "🐄" },
+  "kambing": { color: "#b45309", icon: "🐐" }, // Cokelat Muda
+  "domba": { color: "#7c2d12", icon: "🐑" },
+  "bebek": { color: "#d97706", icon: "🦆" },
+  "itik": { color: "#d97706", icon: "🦆" },
+};
+
+const FALLBACK_PALETTE = [
+  "#16a34a", "#0284c7", "#ea580c", "#8b5cf6", "#06b6d4",
+  "#d97706", "#dc2626", "#0d9488", "#4f46e5", "#db2777",
+  "#65a30d", "#7c3aed", "#e11d48", "#ca8a04", "#2563eb"
+];
+
+export function getKomoditasColor(komoditasName?: string, jenisUsaha?: string): { color: string; icon: string } {
+  if (!komoditasName || komoditasName.trim() === "" || komoditasName === "-") {
+    if (jenisUsaha === "KOLAM") return { color: "#0284c7", icon: "🐟" };
+    if (jenisUsaha === "PETERNAKAN") return { color: "#ea580c", icon: "🐄" };
+    if (jenisUsaha === "POKTAN") return { color: "#9333ea", icon: "👥" };
+    return { color: "#16a34a", icon: "🌱" };
+  }
+
+  const clean = komoditasName.toLowerCase().trim();
+  if (KOMODITAS_COLOR_PALETTE[clean]) {
+    return KOMODITAS_COLOR_PALETTE[clean];
+  }
+
+  for (const [key, val] of Object.entries(KOMODITAS_COLOR_PALETTE)) {
+    if (clean.includes(key)) {
+      return val;
+    }
+  }
+
+  let hash = 0;
+  for (let i = 0; i < clean.length; i++) {
+    hash = (hash << 5) - hash + clean.charCodeAt(i);
+    hash |= 0;
+  }
+  const color = FALLBACK_PALETTE[Math.abs(hash) % FALLBACK_PALETTE.length];
+  let icon = "🌱";
+  if (jenisUsaha === "KOLAM") icon = "🐟";
+  else if (jenisUsaha === "PETERNAKAN") icon = "🐄";
+  else if (jenisUsaha === "POKTAN") icon = "👥";
+
+  return { color, icon };
+}
+
 const LeafletMapInner = ({
   pins,
   center,
@@ -150,21 +235,9 @@ const LeafletMapInner = ({
     return null;
   }
 
-  // DivIcon Generator
+  // DivIcon Generator Berdasarkan Warna Komoditas
   const getIcon = (item: MapPinItem) => {
-    let symbol = "🌱";
-    let bg = "#16a34a"; // Kebun
-
-    if (item.jenisUsaha === "KOLAM") {
-      symbol = "🐟";
-      bg = "#0284c7"; // Kolam
-    } else if (item.jenisUsaha === "PETERNAKAN") {
-      symbol = "🐄";
-      bg = "#ea580c"; // Peternakan
-    } else if (item.jenisUsaha === "POKTAN") {
-      symbol = "👥";
-      bg = "#9333ea"; // Poktan
-    }
+    const { color: bg, icon: symbol } = getKomoditasColor(item.komoditas, item.jenisUsaha);
 
     return L.divIcon({
       className: "custom-map-pin",
@@ -179,7 +252,7 @@ const LeafletMapInner = ({
           align-items: center;
           justify-content: center;
           box-shadow: 0 4px 10px rgba(0,0,0,0.35);
-          border: 2px solid #ffffff;
+          border: 2.5px solid #ffffff;
           transition: transform 0.2s ease;
         ">
           <span style="transform: rotate(45deg); font-size: 14px; line-height: 1;">${symbol}</span>
@@ -211,6 +284,7 @@ const LeafletMapInner = ({
       {pins.map((pin) => {
         const hasRealPhoto = Boolean(pin.fotoUrl || (pin.foto && pin.foto.length > 0 && pin.foto[0].url));
         const photoUrl = hasRealPhoto ? (pin.fotoUrl || pin.foto![0].url) : null;
+        const { color: pinColor, icon: pinSymbol } = getKomoditasColor(pin.komoditas, pin.jenisUsaha);
 
         // Dedicated detail page link based on sector
         let detailHref = `/pertanian/${pin.dbId || pin.kode || pin.id}`;
@@ -253,10 +327,11 @@ const LeafletMapInner = ({
                       </span>
                     </div>
                     <span
-                      className="absolute top-1.5 left-1.5 text-[9px] font-bold uppercase tracking-wider text-white px-2 py-0.5 rounded-md shadow-xs backdrop-blur-xs"
-                      style={{ backgroundColor: pin.color }}
+                      className="absolute top-1.5 left-1.5 text-[9px] font-bold uppercase tracking-wider text-white px-2 py-0.5 rounded-md shadow-xs backdrop-blur-xs flex items-center gap-1"
+                      style={{ backgroundColor: pinColor }}
                     >
-                      {pin.jenisUsaha}
+                      <span>{pinSymbol}</span>
+                      <span>{pin.komoditas || pin.jenisUsaha}</span>
                     </span>
                   </div>
                 ) : (
@@ -266,10 +341,11 @@ const LeafletMapInner = ({
                       Belum ada foto
                     </span>
                     <span
-                      className="absolute top-1.5 left-1.5 text-[9px] font-bold uppercase tracking-wider text-white px-2 py-0.5 rounded-md shadow-xs"
-                      style={{ backgroundColor: pin.color }}
+                      className="absolute top-1.5 left-1.5 text-[9px] font-bold uppercase tracking-wider text-white px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1"
+                      style={{ backgroundColor: pinColor }}
                     >
-                      {pin.jenisUsaha}
+                      <span>{pinSymbol}</span>
+                      <span>{pin.komoditas || pin.jenisUsaha}</span>
                     </span>
                   </div>
                 )}
@@ -277,8 +353,14 @@ const LeafletMapInner = ({
                 <h4 className="font-bold text-sm text-slate-900 leading-tight mb-1">
                   {pin.nama}
                 </h4>
-                <p className="text-xs text-slate-600 mb-0.5">
-                  <strong>Komoditas:</strong> {pin.komoditas}
+                <p className="text-xs text-slate-600 mb-0.5 flex items-center gap-1">
+                  <strong>Komoditas:</strong>
+                  <span
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-bold text-[11px]"
+                    style={{ color: pinColor, backgroundColor: `${pinColor}18` }}
+                  >
+                    {pinSymbol} {pin.komoditas}
+                  </span>
                 </p>
                 {pin.luas && (
                   <p className="text-xs text-slate-600 mb-0.5">
@@ -334,8 +416,14 @@ export default function PotensiMap({
   setSelectedDesa,
   selectedJenis,
   setSelectedJenis,
+  selectedKomoditas,
+  setSelectedKomoditas,
 }: PotensiMapProps) {
   const [mounted, setMounted] = useState(false);
+  const [internalKomoditas, setInternalKomoditas] = useState<string>("semua");
+
+  const activeKomoditas = selectedKomoditas !== undefined ? selectedKomoditas : internalKomoditas;
+  const setActiveKomoditas = setSelectedKomoditas || setInternalKomoditas;
 
   useEffect(() => {
     setMounted(true);
@@ -352,12 +440,79 @@ export default function PotensiMap({
     return Array.from(desas).sort();
   }, [pins, selectedKecamatan]);
 
-  // Filtered Pins berdasarkan kriteria filter
+  // Kumpulkan daftar komoditas unik berdasarkan sektor jenis usaha
+  const komoditasBySector = useMemo(() => {
+    const sectors: {
+      kebun: { name: string; count: number }[];
+      kolam: { name: string; count: number }[];
+      peternakan: { name: string; count: number }[];
+    } = {
+      kebun: [],
+      kolam: [],
+      peternakan: [],
+    };
+
+    const countMap: Record<string, { name: string; sector: "kebun" | "kolam" | "peternakan"; count: number }> = {};
+
+    pins.forEach((p) => {
+      if (!p.komoditas || p.komoditas.trim() === "" || p.komoditas === "-") return;
+      const cleanName = p.komoditas.trim();
+      const jenis = (p.jenisUsaha || "").toUpperCase();
+
+      let sector: "kebun" | "kolam" | "peternakan" = "kebun";
+      if (jenis === "KOLAM") sector = "kolam";
+      else if (jenis === "PETERNAKAN") sector = "peternakan";
+
+      const key = `${sector}:${cleanName.toLowerCase()}`;
+      if (!countMap[key]) {
+        countMap[key] = { name: cleanName, sector, count: 0 };
+      }
+      countMap[key].count += 1;
+    });
+
+    Object.values(countMap).forEach((item) => {
+      sectors[item.sector].push({ name: item.name, count: item.count });
+    });
+
+    sectors.kebun.sort((a, b) => a.name.localeCompare(b.name));
+    sectors.kolam.sort((a, b) => a.name.localeCompare(b.name));
+    sectors.peternakan.sort((a, b) => a.name.localeCompare(b.name));
+
+    return sectors;
+  }, [pins]);
+
+  // Reset komoditas jika jenis usaha berganti dan komoditas aktif tidak ada di sektor baru
+  useEffect(() => {
+    if (activeKomoditas === "semua") return;
+    if (selectedJenis === "semua") return;
+
+    const list =
+      selectedJenis === "kebun"
+        ? komoditasBySector.kebun
+        : selectedJenis === "kolam"
+        ? komoditasBySector.kolam
+        : selectedJenis === "peternakan"
+        ? komoditasBySector.peternakan
+        : [];
+
+    const exists = list.some(
+      (k) => k.name.toLowerCase() === activeKomoditas.toLowerCase()
+    );
+
+    if (!exists) {
+      setActiveKomoditas("semua");
+    }
+  }, [selectedJenis, activeKomoditas, komoditasBySector, setActiveKomoditas]);
+
+  // Filtered Pins berdasarkan kriteria filter (Kecamatan, Desa, Sektor Jenis Usaha, Komoditas)
   const filteredPins = useMemo(() => {
     return pins.filter((p) => {
       const matchJenis =
         selectedJenis === "semua" ||
         p.jenisUsaha.toLowerCase() === selectedJenis.toLowerCase();
+      const matchKomoditas =
+        activeKomoditas === "semua" ||
+        p.komoditas?.toLowerCase().trim() === activeKomoditas.toLowerCase().trim();
       const matchKecamatan =
         selectedKecamatan === "semua" ||
         p.kecamatan?.toLowerCase() === selectedKecamatan.toLowerCase();
@@ -365,9 +520,9 @@ export default function PotensiMap({
         !selectedDesa ||
         selectedDesa === "semua" ||
         p.desa?.toLowerCase() === selectedDesa.toLowerCase();
-      return matchJenis && matchKecamatan && matchDesa;
+      return matchJenis && matchKomoditas && matchKecamatan && matchDesa;
     });
-  }, [pins, selectedJenis, selectedKecamatan, selectedDesa]);
+  }, [pins, selectedJenis, activeKomoditas, selectedKecamatan, selectedDesa]);
 
   // Pastikan hanya pin dengan koordinat valid di dalam cakupan Tapanuli Selatan
   const validPins = useMemo(() => {
@@ -384,6 +539,21 @@ export default function PotensiMap({
       );
     });
   }, [filteredPins]);
+
+  // Kumpulkan komoditas yang saat ini tampil di peta beserta warna dan jumlahnya
+  const activeCommoditiesInView = useMemo(() => {
+    const map = new Map<string, { name: string; color: string; icon: string; count: number }>();
+    validPins.forEach((p) => {
+      if (!p.komoditas || p.komoditas.trim() === "" || p.komoditas === "-") return;
+      const name = p.komoditas.trim();
+      if (!map.has(name)) {
+        const { color, icon } = getKomoditasColor(name, p.jenisUsaha);
+        map.set(name, { name, color, icon, count: 0 });
+      }
+      map.get(name)!.count += 1;
+    });
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [validPins]);
 
   // Menentukan Pusat & Level Zoom Dinamis (Default selalu Wilayah Tapanuli Selatan)
   const { activeCenter, activeZoom } = useMemo(() => {
@@ -442,6 +612,7 @@ export default function PotensiMap({
           </h3>
           <p className="text-xs text-slate-500">
             Fokus wilayah Kabupaten Tapanuli Selatan (15 Kecamatan) • {validPins.length} Titik Terdata
+            {activeKomoditas !== "semua" && ` • Komoditas: ${activeKomoditas}`}
           </p>
         </div>
 
@@ -465,6 +636,7 @@ export default function PotensiMap({
               setSelectedKecamatan("semua");
               if (setSelectedDesa) setSelectedDesa("semua");
               setSelectedJenis("semua");
+              setActiveKomoditas("semua");
             }}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition shadow-2xs cursor-pointer"
             title="Kembalikan peta ke fokus wilayah Kabupaten Tapanuli Selatan"
@@ -523,6 +695,78 @@ export default function PotensiMap({
               <option value="peternakan">Peternakan</option>
             </select>
           </div>
+
+          {/* Filter Komoditas Berdasarkan Sektor Jenis Usaha */}
+          <div className="relative">
+            <select
+              value={activeKomoditas}
+              onChange={(e) => setActiveKomoditas(e.target.value)}
+              className="text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 cursor-pointer shadow-2xs max-w-[170px]"
+              title="Filter komoditas berdasarkan sektor jenis usaha"
+            >
+              {selectedJenis === "semua" ? (
+                <>
+                  <option value="semua">Semua Komoditas</option>
+                  {komoditasBySector.kebun.length > 0 && (
+                    <optgroup label="🌱 Pertanian / Kebun">
+                      {komoditasBySector.kebun.map((k) => (
+                        <option key={`kebun-${k.name}`} value={k.name}>
+                          {k.name} ({k.count})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {komoditasBySector.kolam.length > 0 && (
+                    <optgroup label="🐟 Perikanan / Kolam">
+                      {komoditasBySector.kolam.map((k) => (
+                        <option key={`kolam-${k.name}`} value={k.name}>
+                          {k.name} ({k.count})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {komoditasBySector.peternakan.length > 0 && (
+                    <optgroup label="🐄 Peternakan">
+                      {komoditasBySector.peternakan.map((k) => (
+                        <option key={`ternak-${k.name}`} value={k.name}>
+                          {k.name} ({k.count})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </>
+              ) : selectedJenis === "kebun" ? (
+                <>
+                  <option value="semua">Semua Komoditas Kebun ({komoditasBySector.kebun.reduce((acc, c) => acc + c.count, 0)})</option>
+                  {komoditasBySector.kebun.map((k) => (
+                    <option key={k.name} value={k.name}>
+                      {k.name} ({k.count})
+                    </option>
+                  ))}
+                </>
+              ) : selectedJenis === "kolam" ? (
+                <>
+                  <option value="semua">Semua Komoditas Kolam ({komoditasBySector.kolam.reduce((acc, c) => acc + c.count, 0)})</option>
+                  {komoditasBySector.kolam.map((k) => (
+                    <option key={k.name} value={k.name}>
+                      {k.name} ({k.count})
+                    </option>
+                  ))}
+                </>
+              ) : selectedJenis === "peternakan" ? (
+                <>
+                  <option value="semua">Semua Komoditas Peternakan ({komoditasBySector.peternakan.reduce((acc, c) => acc + c.count, 0)})</option>
+                  {komoditasBySector.peternakan.map((k) => (
+                    <option key={k.name} value={k.name}>
+                      {k.name} ({k.count})
+                    </option>
+                  ))}
+                </>
+              ) : (
+                <option value="semua">Semua Komoditas</option>
+              )}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -544,27 +788,45 @@ export default function PotensiMap({
           <span>
             Wilayah: <strong>Kabupaten Tapanuli Selatan</strong>{" "}
             {selectedKecamatan !== "semua" ? `• Kec. ${selectedKecamatan}` : "• 15 Kecamatan"}
+            {activeKomoditas !== "semua" && ` • ${activeKomoditas}`}
           </span>
         </div>
 
-        {/* Legend Box */}
-        <div className="absolute top-3 right-3 z-20 bg-white/95 backdrop-blur-md rounded-xl p-2.5 shadow-md border border-slate-200 text-xs font-medium space-y-1.5 pointer-events-auto">
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-[#16a34a] border border-white shadow-2xs" />
-            <span className="text-slate-700 font-semibold">Kebun</span>
+        {/* Legend Box Komoditas */}
+        <div className="absolute top-3 right-3 z-20 bg-white/95 backdrop-blur-md rounded-xl p-2.5 shadow-md border border-slate-200 text-xs font-medium pointer-events-auto max-h-[220px] overflow-y-auto max-w-[210px] space-y-1">
+          <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-100 pb-1 flex items-center justify-between gap-2">
+            <span>Legenda Komoditas</span>
+            <span className="text-[9px] bg-emerald-50 text-emerald-800 font-bold px-1.5 py-0.5 rounded-full border border-emerald-200/60">
+              {activeCommoditiesInView.length}
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-[#0284c7] border border-white shadow-2xs" />
-            <span className="text-slate-700 font-semibold">Kolam</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-[#ea580c] border border-white shadow-2xs" />
-            <span className="text-slate-700 font-semibold">Peternakan</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-[#9333ea] border border-white shadow-2xs" />
-            <span className="text-slate-700 font-semibold">Kelompok Tani</span>
-          </div>
+          {activeCommoditiesInView.length > 0 ? (
+            activeCommoditiesInView.map((item) => (
+              <div
+                key={item.name}
+                onClick={() => setActiveKomoditas(activeKomoditas === item.name ? "semua" : item.name)}
+                className={`flex items-center justify-between gap-2 px-1.5 py-1 rounded-lg transition cursor-pointer hover:bg-slate-100 ${
+                  activeKomoditas === item.name ? "bg-emerald-50 ring-1 ring-emerald-500 font-bold" : ""
+                }`}
+                title={`Klik untuk memfilter ${item.name}`}
+              >
+                <div className="flex items-center gap-1.5 truncate">
+                  <span
+                    className="w-3 h-3 rounded-full border border-white shadow-2xs shrink-0"
+                    style={{ backgroundColor: item.color }}
+                  />
+                  <span className="text-slate-800 text-[11px] truncate">
+                    {item.icon} {item.name}
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                  {item.count}
+                </span>
+              </div>
+            ))
+          ) : (
+            <div className="text-[10px] text-slate-400 py-1">Tidak ada titik data</div>
+          )}
         </div>
       </div>
 
@@ -841,6 +1103,7 @@ export default function PotensiMap({
                   </h3>
                   <p className="text-xs text-slate-500 font-medium">
                     Fokus wilayah Kabupaten Tapanuli Selatan (15 Kecamatan) • {validPins.length} Titik Terdata
+                    {activeKomoditas !== "semua" && ` • Komoditas: ${activeKomoditas}`}
                   </p>
                 </div>
               </div>
@@ -854,6 +1117,7 @@ export default function PotensiMap({
                     setSelectedKecamatan("semua");
                     if (setSelectedDesa) setSelectedDesa("semua");
                     setSelectedJenis("semua");
+                    setActiveKomoditas("semua");
                   }}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition shadow-2xs cursor-pointer"
                   title="Kembalikan peta ke fokus wilayah Kabupaten Tapanuli Selatan"
@@ -913,6 +1177,78 @@ export default function PotensiMap({
                   </select>
                 </div>
 
+                {/* Filter Komoditas Berdasarkan Sektor Jenis Usaha */}
+                <div className="relative">
+                  <select
+                    value={activeKomoditas}
+                    onChange={(e) => setActiveKomoditas(e.target.value)}
+                    className="text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 cursor-pointer shadow-2xs max-w-[170px]"
+                    title="Filter komoditas berdasarkan sektor jenis usaha"
+                  >
+                    {selectedJenis === "semua" ? (
+                      <>
+                        <option value="semua">Semua Komoditas</option>
+                        {komoditasBySector.kebun.length > 0 && (
+                          <optgroup label="🌱 Pertanian / Kebun">
+                            {komoditasBySector.kebun.map((k) => (
+                              <option key={`kebun-modal-${k.name}`} value={k.name}>
+                                {k.name} ({k.count})
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {komoditasBySector.kolam.length > 0 && (
+                          <optgroup label="🐟 Perikanan / Kolam">
+                            {komoditasBySector.kolam.map((k) => (
+                              <option key={`kolam-modal-${k.name}`} value={k.name}>
+                                {k.name} ({k.count})
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {komoditasBySector.peternakan.length > 0 && (
+                          <optgroup label="🐄 Peternakan">
+                            {komoditasBySector.peternakan.map((k) => (
+                              <option key={`ternak-modal-${k.name}`} value={k.name}>
+                                {k.name} ({k.count})
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </>
+                    ) : selectedJenis === "kebun" ? (
+                      <>
+                        <option value="semua">Semua Komoditas Kebun ({komoditasBySector.kebun.reduce((acc, c) => acc + c.count, 0)})</option>
+                        {komoditasBySector.kebun.map((k) => (
+                          <option key={k.name} value={k.name}>
+                            {k.name} ({k.count})
+                          </option>
+                        ))}
+                      </>
+                    ) : selectedJenis === "kolam" ? (
+                      <>
+                        <option value="semua">Semua Komoditas Kolam ({komoditasBySector.kolam.reduce((acc, c) => acc + c.count, 0)})</option>
+                        {komoditasBySector.kolam.map((k) => (
+                          <option key={k.name} value={k.name}>
+                            {k.name} ({k.count})
+                          </option>
+                        ))}
+                      </>
+                    ) : selectedJenis === "peternakan" ? (
+                      <>
+                        <option value="semua">Semua Komoditas Peternakan ({komoditasBySector.peternakan.reduce((acc, c) => acc + c.count, 0)})</option>
+                        {komoditasBySector.peternakan.map((k) => (
+                          <option key={k.name} value={k.name}>
+                            {k.name} ({k.count})
+                          </option>
+                        ))}
+                      </>
+                    ) : (
+                      <option value="semua">Semua Komoditas</option>
+                    )}
+                  </select>
+                </div>
+
                 {/* Tombol Tutup Pop-Up */}
                 <button
                   type="button"
@@ -945,27 +1281,45 @@ export default function PotensiMap({
                 <span>
                   Wilayah: <strong>Kabupaten Tapanuli Selatan</strong>{" "}
                   {selectedKecamatan !== "semua" ? `• Kec. ${selectedKecamatan}` : "• 15 Kecamatan"}
+                  {activeKomoditas !== "semua" && ` • ${activeKomoditas}`}
                 </span>
               </div>
 
-              {/* Legend Box Pojok Kanan Atas */}
-              <div className="absolute top-4 right-4 z-20 bg-white/95 backdrop-blur-md rounded-2xl p-3 shadow-lg border border-slate-200 text-xs font-medium space-y-2 pointer-events-auto">
-                <div className="flex items-center gap-2">
-                  <span className="w-3.5 h-3.5 rounded-full bg-[#16a34a] border border-white shadow-2xs" />
-                  <span className="text-slate-800 font-bold">Kebun</span>
+              {/* Legend Box Komoditas */}
+              <div className="absolute top-4 right-4 z-20 bg-white/95 backdrop-blur-md rounded-2xl p-3 shadow-lg border border-slate-200 text-xs font-medium pointer-events-auto max-h-[280px] overflow-y-auto max-w-[240px] space-y-1.5 scrollbar-thin">
+                <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center justify-between gap-2">
+                  <span>Warna Komoditas</span>
+                  <span className="text-[9px] bg-emerald-50 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-200/60">
+                    {activeCommoditiesInView.length}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3.5 h-3.5 rounded-full bg-[#0284c7] border border-white shadow-2xs" />
-                  <span className="text-slate-800 font-bold">Kolam</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3.5 h-3.5 rounded-full bg-[#ea580c] border border-white shadow-2xs" />
-                  <span className="text-slate-800 font-bold">Peternakan</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3.5 h-3.5 rounded-full bg-[#9333ea] border border-white shadow-2xs" />
-                  <span className="text-slate-800 font-bold">Kelompok Tani</span>
-                </div>
+                {activeCommoditiesInView.length > 0 ? (
+                  activeCommoditiesInView.map((item) => (
+                    <div
+                      key={`modal-legend-${item.name}`}
+                      onClick={() => setActiveKomoditas(activeKomoditas === item.name ? "semua" : item.name)}
+                      className={`flex items-center justify-between gap-2 px-2 py-1 rounded-lg transition cursor-pointer hover:bg-slate-100 ${
+                        activeKomoditas === item.name ? "bg-emerald-50 ring-1.5 ring-emerald-500 font-bold" : ""
+                      }`}
+                      title={`Klik untuk filter ${item.name}`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-white shadow-2xs shrink-0"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <span className="text-slate-800 text-xs truncate">
+                          {item.icon} {item.name}
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-400 shrink-0">
+                        {item.count}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-[10px] text-slate-400 py-1">Tidak ada titik data</div>
+                )}
               </div>
             </div>
           </div>
