@@ -144,7 +144,7 @@ export default function LoginPage() {
           </div>
 
           <h1 className="text-3xl xl:text-4xl font-extrabold text-white leading-tight max-w-xl">
-            Sistem Informasi Data Agro Layanan Informasi Hasil Angkola Nusantara
+            Sistem Informasi Data Agro Layanan Informasi Hasil Angkola
           </h1>
           <p className="text-sm text-emerald-100/80 mt-3 max-w-lg leading-relaxed font-medium">
             Portal data terintegrasi dari tingkat desa, kelompok tani, hingga kabupaten untuk

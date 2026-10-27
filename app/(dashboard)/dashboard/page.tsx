@@ -242,7 +242,7 @@ export default function DashboardTaniTapselPage() {
                 </span>
               </h1>
               <p className="text-xs sm:text-sm text-emerald-100/80 mt-1 max-w-xl font-medium">
-                Sistem Informasi Data Agro Layanan Informasi Hasil Angkola Nusantara
+                Sistem Informasi Data Agro Layanan Informasi Hasil Angkola
               </p>
             </div>
           </div>

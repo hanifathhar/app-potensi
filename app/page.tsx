@@ -319,7 +319,7 @@ export default async function LandingPage() {
               </h1>
 
               <p className="text-sm sm:text-base text-emerald-100/90 font-medium leading-relaxed max-w-xl drop-shadow-xs">
-                Sistem Informasi Data Agro Layanan Informasi Hasil Angkola Nusantara (SIDALIHAN)
+                Sistem Informasi Data Agro Layanan Informasi Hasil Angkola
               </p>
 
               <div className="pt-2 flex flex-wrap items-center gap-3">
