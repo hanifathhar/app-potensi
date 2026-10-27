@@ -22,10 +22,13 @@ import {
   Camera,
   Upload,
   ArrowUpRight,
+  HandCoins,
+  Plus,
 } from "lucide-react";
 import SingleLocationMap from "@/components/dashboard/SingleLocationMap";
 import UnitSiklusProduksi from "@/components/potensi/UnitSiklusProduksi";
 import UnitFotoKegiatan from "@/components/potensi/UnitFotoKegiatan";
+import UnitPendanaan from "@/components/potensi/UnitPendanaan";
 
 interface KolamDetailViewProps {
   kolam: {
@@ -78,8 +81,11 @@ interface KolamDetailViewProps {
       id: string;
       namaProgram?: string | null;
       sumberDana: string;
+      namaSumberDana?: string | null;
       tahunAnggaran?: number | null;
+      nomorUsulan?: string | null;
       danaDiajukan: number | string;
+      danaDisetujui?: number | string | null;
       danaDicairkan?: number | string | null;
       status: string;
       keterangan?: string | null;
@@ -103,10 +109,11 @@ interface KolamDetailViewProps {
 }
 
 export default function KolamDetailView({ kolam }: KolamDetailViewProps) {
-  const [activeTab, setActiveTab] = useState<"profil" | "siklus" | "foto">("profil");
+  const [activeTab, setActiveTab] = useState<"profil" | "siklus" | "foto" | "pendanaan">("profil");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [siklusCount, setSiklusCount] = useState<number>(kolam.siklus?.length || 0);
   const [fotoCount, setFotoCount] = useState<number>(kolam.foto?.length || 0);
+  const [pendanaanCount, setPendanaanCount] = useState<number>(kolam.pendanaan?.length || 0);
 
   const latNum = kolam.latitude ? Number(kolam.latitude) : null;
   const lngNum = kolam.longitude ? Number(kolam.longitude) : null;
@@ -254,6 +261,23 @@ export default function KolamDetailView({ kolam }: KolamDetailViewProps) {
               }`}
           >
             {fotoCount}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("pendanaan")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer whitespace-nowrap ${activeTab === "pendanaan"
+              ? "bg-[#0284c7] text-white shadow-xs"
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            }`}
+        >
+          <HandCoins size={15} />
+          <span>Bantuan & Pendanaan</span>
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === "pendanaan" ? "bg-white text-sky-900" : "bg-sky-100 text-sky-800"
+              }`}
+          >
+            {pendanaanCount}
           </span>
         </button>
       </div>
@@ -483,6 +507,77 @@ export default function KolamDetailView({ kolam }: KolamDetailViewProps) {
                   )}
                 </div>
               </div>
+
+              {/* Card: Ringkasan Bantuan & Pendanaan Usaha */}
+              <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
+                    <HandCoins size={18} className="text-sky-700" />
+                    <span>Bantuan & Pendanaan Usaha ({pendanaanCount})</span>
+                  </h3>
+                  <button
+                    onClick={() => setActiveTab("pendanaan")}
+                    className="text-xs font-bold text-sky-700 hover:text-sky-800 flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Buka Rincian Bantuan</span>
+                    <ArrowUpRight size={13} />
+                  </button>
+                </div>
+
+                {kolam.pendanaan && kolam.pendanaan.length > 0 ? (
+                  <div className="space-y-2.5 text-xs">
+                    {kolam.pendanaan.slice(0, 3).map((item) => (
+                      <div
+                        key={item.id}
+                        className="p-3 rounded-xl bg-slate-50 hover:bg-sky-50/50 border border-slate-200/80 transition flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                      >
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-[10px] px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 uppercase">
+                              Tahun {item.tahunAnggaran || "-"}
+                            </span>
+                            <span className="text-[11px] text-slate-500 font-semibold">
+                              {item.sumberDana?.replace("_", " ")}
+                            </span>
+                          </div>
+                          <p className="font-bold text-slate-900 text-xs mt-1">
+                            {item.namaProgram || "Bantuan Usaha"}
+                          </p>
+                          {item.namaSumberDana && (
+                            <span className="text-[10px] text-slate-400 block">
+                              Penyalur: {item.namaSumberDana}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-left sm:text-right">
+                          <span className="text-[10px] text-slate-400 block font-medium">Nilai Dicairkan</span>
+                          <span className="font-mono font-black text-sky-900 text-sm">
+                            {new Intl.NumberFormat("id-ID", {
+                              style: "currency",
+                              currency: "IDR",
+                              minimumFractionDigits: 0,
+                            }).format(Number(item.danaDicairkan || 0))}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    {kolam.pendanaan.length > 3 && (
+                      <button
+                        onClick={() => setActiveTab("pendanaan")}
+                        className="w-full py-1.5 text-center text-xs font-bold text-sky-700 hover:underline cursor-pointer"
+                      >
+                        + Lihat {kolam.pendanaan.length - 3} Catatan Bantuan Lainnya
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 text-center">
+                    <p className="text-xs text-slate-500">
+                      Belum ada catatan penerimaan bantuan atau pembiayaan KUR yang tercatat.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Right Column (1 col wide on desktop) */}
@@ -632,6 +727,18 @@ export default function KolamDetailView({ kolam }: KolamDetailViewProps) {
           komoditasNama={kolam.komoditas?.nm_komoditas}
           initialFoto={kolam.foto}
           onFotoCountChange={setFotoCount}
+        />
+      )}
+
+      {/* TAB 4: BANTUAN & PENDANAAN */}
+      {activeTab === "pendanaan" && (
+        <UnitPendanaan
+          jenisUsaha="KOLAM"
+          kdUnit={kolam.kd_kolam}
+          namaUnit={kolam.nm_kolam}
+          komoditasNama={kolam.komoditas?.nm_komoditas}
+          initialPendanaan={kolam.pendanaan as any}
+          onPendanaanCountChange={setPendanaanCount}
         />
       )}
 

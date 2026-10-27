@@ -22,10 +22,13 @@ import {
   Camera,
   Upload,
   ArrowUpRight,
+  HandCoins,
+  Plus,
 } from "lucide-react";
 import SingleLocationMap from "@/components/dashboard/SingleLocationMap";
 import UnitSiklusProduksi from "@/components/potensi/UnitSiklusProduksi";
 import UnitFotoKegiatan from "@/components/potensi/UnitFotoKegiatan";
+import UnitPendanaan from "@/components/potensi/UnitPendanaan";
 
 interface PeternakanDetailViewProps {
   ternak: {
@@ -78,8 +81,11 @@ interface PeternakanDetailViewProps {
       id: string;
       namaProgram?: string | null;
       sumberDana: string;
+      namaSumberDana?: string | null;
       tahunAnggaran?: number | null;
+      nomorUsulan?: string | null;
       danaDiajukan: number | string;
+      danaDisetujui?: number | string | null;
       danaDicairkan?: number | string | null;
       status: string;
       keterangan?: string | null;
@@ -103,10 +109,11 @@ interface PeternakanDetailViewProps {
 }
 
 export default function PeternakanDetailView({ ternak }: PeternakanDetailViewProps) {
-  const [activeTab, setActiveTab] = useState<"profil" | "siklus" | "foto">("profil");
+  const [activeTab, setActiveTab] = useState<"profil" | "siklus" | "foto" | "pendanaan">("profil");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [siklusCount, setSiklusCount] = useState<number>(ternak.siklus?.length || 0);
   const [fotoCount, setFotoCount] = useState<number>(ternak.foto?.length || 0);
+  const [pendanaanCount, setPendanaanCount] = useState<number>(ternak.pendanaan?.length || 0);
 
   const latNum = ternak.latitude ? Number(ternak.latitude) : null;
   const lngNum = ternak.longitude ? Number(ternak.longitude) : null;
@@ -253,6 +260,23 @@ export default function PeternakanDetailView({ ternak }: PeternakanDetailViewPro
               }`}
           >
             {fotoCount}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("pendanaan")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer whitespace-nowrap ${activeTab === "pendanaan"
+              ? "bg-[#ea580c] text-white shadow-xs"
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            }`}
+        >
+          <HandCoins size={15} />
+          <span>Bantuan & Pendanaan</span>
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === "pendanaan" ? "bg-white text-orange-900" : "bg-orange-100 text-orange-800"
+              }`}
+          >
+            {pendanaanCount}
           </span>
         </button>
       </div>
@@ -486,6 +510,77 @@ export default function PeternakanDetailView({ ternak }: PeternakanDetailViewPro
                   )}
                 </div>
               </div>
+
+              {/* Card: Ringkasan Bantuan & Pendanaan Usaha */}
+              <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
+                    <HandCoins size={18} className="text-orange-700" />
+                    <span>Bantuan & Pendanaan Usaha ({pendanaanCount})</span>
+                  </h3>
+                  <button
+                    onClick={() => setActiveTab("pendanaan")}
+                    className="text-xs font-bold text-orange-700 hover:text-orange-800 flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Buka Rincian Bantuan</span>
+                    <ArrowUpRight size={13} />
+                  </button>
+                </div>
+
+                {ternak.pendanaan && ternak.pendanaan.length > 0 ? (
+                  <div className="space-y-2.5 text-xs">
+                    {ternak.pendanaan.slice(0, 3).map((item) => (
+                      <div
+                        key={item.id}
+                        className="p-3 rounded-xl bg-slate-50 hover:bg-orange-50/50 border border-slate-200/80 transition flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                      >
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-[10px] px-2 py-0.5 rounded-md bg-orange-100 text-orange-800 uppercase">
+                              Tahun {item.tahunAnggaran || "-"}
+                            </span>
+                            <span className="text-[11px] text-slate-500 font-semibold">
+                              {item.sumberDana?.replace("_", " ")}
+                            </span>
+                          </div>
+                          <p className="font-bold text-slate-900 text-xs mt-1">
+                            {item.namaProgram || "Bantuan Usaha"}
+                          </p>
+                          {item.namaSumberDana && (
+                            <span className="text-[10px] text-slate-400 block">
+                              Penyalur: {item.namaSumberDana}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-left sm:text-right">
+                          <span className="text-[10px] text-slate-400 block font-medium">Nilai Dicairkan</span>
+                          <span className="font-mono font-black text-orange-900 text-sm">
+                            {new Intl.NumberFormat("id-ID", {
+                              style: "currency",
+                              currency: "IDR",
+                              minimumFractionDigits: 0,
+                            }).format(Number(item.danaDicairkan || 0))}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    {ternak.pendanaan.length > 3 && (
+                      <button
+                        onClick={() => setActiveTab("pendanaan")}
+                        className="w-full py-1.5 text-center text-xs font-bold text-orange-700 hover:underline cursor-pointer"
+                      >
+                        + Lihat {ternak.pendanaan.length - 3} Catatan Bantuan Lainnya
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 text-center">
+                    <p className="text-xs text-slate-500">
+                      Belum ada catatan penerimaan bantuan atau pembiayaan KUR yang tercatat.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Right Column (1 col wide on desktop) */}
@@ -635,6 +730,18 @@ export default function PeternakanDetailView({ ternak }: PeternakanDetailViewPro
           komoditasNama={ternak.komoditas?.nm_komoditas}
           initialFoto={ternak.foto}
           onFotoCountChange={setFotoCount}
+        />
+      )}
+
+      {/* TAB 4: BANTUAN & PENDANAAN */}
+      {activeTab === "pendanaan" && (
+        <UnitPendanaan
+          jenisUsaha="PETERNAKAN"
+          kdUnit={ternak.kd_peternakan}
+          namaUnit={ternak.nm_peternakan}
+          komoditasNama={ternak.komoditas?.nm_komoditas}
+          initialPendanaan={ternak.pendanaan as any}
+          onPendanaanCountChange={setPendanaanCount}
         />
       )}
 

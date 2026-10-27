@@ -4,14 +4,27 @@ import { JenisSumberDana, StatusPendanaan } from "@prisma/client";
 import { getUserFromRequest, getAuthorityFilter, isAuthorizedForTerritory } from "@/lib/auth";
 
 function checkUserSectorPermission(user: any, jenisUnit?: string): { allowed: boolean; message?: string } {
-  const isSuperAdmin = user?.peran === "SUPERADMIN" || user?.peran === "ADMIN_KABUPATEN";
-  const isPertanianAdmin = user?.peran === "ADMIN_PERTANIAN";
-  const isPerikananAdmin = user?.peran === "ADMIN_PERIKANAN";
-
-  if (!isSuperAdmin && !isPertanianAdmin && !isPerikananAdmin) {
+  if (!user) {
     return {
       allowed: false,
-      message: "Akses Ditolak: Menu Pendanaan hanya dapat diakses oleh Superadmin, Admin Dinas Pertanian, dan Admin Dinas Perikanan.",
+      message: "Sesi login tidak valid. Silakan login kembali.",
+    };
+  }
+
+  const isSuperAdmin = user?.peran === "SUPERADMIN" || user?.peran === "ADMIN_KABUPATEN";
+  if (isSuperAdmin) return { allowed: true };
+
+  const isPertanianAdmin = user?.peran === "ADMIN_PERTANIAN" || user?.peran === "PPL_PERTANIAN";
+  const isPerikananAdmin = user?.peran === "ADMIN_PERIKANAN" || user?.peran === "PPL_PERIKANAN";
+  const isLocalOfficer =
+    user?.peran === "ADMIN_KECAMATAN" ||
+    user?.peran === "ADMIN_DESA" ||
+    user?.peran === "PETUGAS";
+
+  if (!isPertanianAdmin && !isPerikananAdmin && !isLocalOfficer) {
+    return {
+      allowed: false,
+      message: "Akses Ditolak: Anda tidak memiliki wewenang mengelola data pendanaan.",
     };
   }
 
@@ -43,18 +56,50 @@ export async function GET(request: Request) {
     const sumberDana = searchParams.get("sumberDana") || "";
     const status = searchParams.get("status") || "";
     const tahun = searchParams.get("tahun") || "";
+    const kd_unit = searchParams.get("kd_unit") || "";
+    const jenisUnit = searchParams.get("jenisUnit") || "";
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
 
     const user = getUserFromRequest(request);
-    const authCheck = checkUserSectorPermission(user);
+    const authCheck = checkUserSectorPermission(user, jenisUnit);
     if (!authCheck.allowed) {
       return NextResponse.json(
         { success: false, error: authCheck.message },
         { status: 403 }
       );
     }
+
+    // Direct unit inquiry (used by Unit Detail Views)
+    if (kd_unit) {
+      let list: any[] = [];
+      if (jenisUnit === "KEBUN") {
+        list = await prisma.pendanaanKebun.findMany({
+          where: { kd_kebun: kd_unit },
+          orderBy: { tahunAnggaran: "desc" },
+        });
+      } else if (jenisUnit === "KOLAM") {
+        list = await prisma.pendanaanKolam.findMany({
+          where: { kd_kolam: kd_unit },
+          orderBy: { tahunAnggaran: "desc" },
+        });
+      } else if (jenisUnit === "PETERNAKAN") {
+        list = await prisma.pendanaanPeternakan.findMany({
+          where: { kd_peternakan: kd_unit },
+          orderBy: { tahunAnggaran: "desc" },
+        });
+      } else {
+        const [dk, dl, dp] = await Promise.all([
+          prisma.pendanaanKebun.findMany({ where: { kd_kebun: kd_unit }, orderBy: { tahunAnggaran: "desc" } }),
+          prisma.pendanaanKolam.findMany({ where: { kd_kolam: kd_unit }, orderBy: { tahunAnggaran: "desc" } }),
+          prisma.pendanaanPeternakan.findMany({ where: { kd_peternakan: kd_unit }, orderBy: { tahunAnggaran: "desc" } }),
+        ]);
+        list = [...dk, ...dl, ...dp];
+      }
+      return NextResponse.json({ success: true, data: list });
+    }
+
 
     const isSuperAdmin = user?.peran === "SUPERADMIN" || user?.peran === "ADMIN_KABUPATEN";
     const isPertanianAdmin = user?.peran === "ADMIN_PERTANIAN";
