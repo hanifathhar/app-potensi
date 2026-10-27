@@ -108,7 +108,7 @@ export default function LoginPage() {
         <div
           className="absolute inset-0 opacity-20 pointer-events-none bg-cover bg-center"
           style={{
-            backgroundImage: "url('/images/banner.png')",
+            backgroundImage: "url('/images/kebun.jpeg')",
           }}
         />
 
