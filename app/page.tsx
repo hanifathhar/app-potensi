@@ -75,6 +75,13 @@ export default async function LandingPage() {
     recentKolam,
     recentTernak,
     recentKebun,
+    latestKebunUpdate,
+    latestKolamUpdate,
+    latestTernakUpdate,
+    latestDanaKebunUpdate,
+    latestDanaKolamUpdate,
+    latestDanaTernakUpdate,
+    latestSiklusUpdate,
   ] = await Promise.all([
     prisma.kebun.count(),
     prisma.kolam.count(),
@@ -154,7 +161,48 @@ export default async function LandingPage() {
       orderBy: { createdAt: "desc" },
       include: { kecamatan: true },
     }),
+    prisma.kebun.findFirst({ select: { updatedAt: true }, orderBy: { updatedAt: "desc" } }),
+    prisma.kolam.findFirst({ select: { updatedAt: true }, orderBy: { updatedAt: "desc" } }),
+    prisma.peternakan.findFirst({ select: { updatedAt: true }, orderBy: { updatedAt: "desc" } }),
+    prisma.pendanaanKebun.findFirst({ select: { updatedAt: true }, orderBy: { updatedAt: "desc" } }),
+    prisma.pendanaanKolam.findFirst({ select: { updatedAt: true }, orderBy: { updatedAt: "desc" } }),
+    prisma.pendanaanPeternakan.findFirst({ select: { updatedAt: true }, orderBy: { updatedAt: "desc" } }),
+    prisma.siklusProduksi.findFirst({ select: { updatedAt: true }, orderBy: { updatedAt: "desc" } }),
   ]);
+
+  // Ambil tanggal pembaharuan data paling mutakhir dari seluruh entitas database
+  const allUpdatedDates = [
+    latestKebunUpdate?.updatedAt,
+    latestKolamUpdate?.updatedAt,
+    latestTernakUpdate?.updatedAt,
+    latestDanaKebunUpdate?.updatedAt,
+    latestDanaKolamUpdate?.updatedAt,
+    latestDanaTernakUpdate?.updatedAt,
+    latestSiklusUpdate?.updatedAt,
+  ].filter((d): d is Date => Boolean(d));
+
+  const latestDbUpdate =
+    allUpdatedDates.length > 0
+      ? new Date(Math.max(...allUpdatedDates.map((d) => new Date(d).getTime())))
+      : new Date();
+
+  const formattedDate = new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Jakarta",
+  }).format(latestDbUpdate);
+
+  const formattedTime = new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Jakarta",
+  })
+    .format(latestDbUpdate)
+    .replace(".", ":");
+
+  const formattedTerakhirUpdate = `${formattedDate} ${formattedTime} WIB`;
 
   const totalUnitUsaha = kebunCount + kolamCount + ternakCount;
   const totalKecamatan = kecamatanList.length;
@@ -715,7 +763,7 @@ export default async function LandingPage() {
           {/* Timestamp on Right */}
           <div className="flex items-center gap-2 text-slate-400 text-center sm:text-right">
             <Calendar size={13} className="text-emerald-500 shrink-0" />
-            <span>Data terakhir diperbarui: 22 Oktober 2026 10:45 WIB</span>
+            <span>Data terakhir diperbarui: {formattedTerakhirUpdate}</span>
           </div>
         </div>
       </footer>
