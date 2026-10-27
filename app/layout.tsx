@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "SIDALIHAN",
-  description: "Sistem Informasi Data Agro Layanan Informasi Hasil Angkola Nusantara",
+  description: "Sistem Informasi Data Agro Layanan Informasi Hasil Angkola",
   icons: {
     icon: "/favicon.png",
   },
