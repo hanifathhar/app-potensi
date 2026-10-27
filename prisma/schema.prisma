@@ -33,6 +33,8 @@ enum StatusData {
   DITOLAK
   AKTIF
   NONAKTIF
+  ISTIRAHAT
+  GAGAL_PANEN
 }
 
 enum JenisUsaha {
@@ -267,6 +269,10 @@ model Kebun {
 
   latitude        Decimal?   @db.Decimal(10, 7)
   longitude       Decimal?   @db.Decimal(10, 7)
+
+  // Data spasial GIS (Batas Lahan Polygon & Styling)
+  batasLahan      Json?      // Format GeoJSON Polygon/MultiPolygon batas lahan kebun
+  warnaPolygon    String?    // Hex kode warna poligon di peta GIS (opsional)
 
   // Data lahan dan tanaman
   jenisTanaman    String?

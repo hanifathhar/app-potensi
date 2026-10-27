@@ -172,6 +172,8 @@ export async function POST(request: Request) {
       deskripsi,
       status,
       fotoUrl,
+      batasLahan,
+      warnaPolygon,
     } = body;
 
     if (!kd_kebun || !nama || !kd_desa || !kd_kecamatan || !kd_komoditas) {
@@ -233,6 +235,8 @@ export async function POST(request: Request) {
         statusLahan,
         deskripsi,
         status: dbStatus,
+        batasLahan: batasLahan ? (typeof batasLahan === "string" ? JSON.parse(batasLahan) : batasLahan) : null,
+        warnaPolygon: warnaPolygon || null,
         foto: fotoUrl
           ? {
               create: {
@@ -282,6 +286,8 @@ export async function PUT(request: Request) {
       deskripsi,
       status,
       fotoUrl,
+      batasLahan,
+      warnaPolygon,
     } = body;
 
     if (!id) {
@@ -320,27 +326,42 @@ export async function PUT(request: Request) {
       }
     }
 
+    const updateData: any = {
+      kd_kebun,
+      nama,
+      namaPemilik,
+      alamatLokasi,
+      latitude: latitude !== undefined ? (latitude ? parseFloat(latitude) : null) : undefined,
+      longitude: longitude !== undefined ? (longitude ? parseFloat(longitude) : null) : undefined,
+      luasLahanHa: luasLahanHa !== undefined ? (luasLahanHa ? parseFloat(luasLahanHa) : null) : undefined,
+      tahunTanam: tahunTanam ? parseInt(tahunTanam) : null,
+      sistemTanam,
+      kondisiTanaman: dbKondisiTanaman !== undefined ? dbKondisiTanaman : undefined,
+      statusLahan,
+      deskripsi,
+      status: dbStatus,
+      batasLahan: batasLahan !== undefined ? (batasLahan && typeof batasLahan === "string" ? JSON.parse(batasLahan) : batasLahan) : undefined,
+      warnaPolygon: warnaPolygon !== undefined ? (warnaPolygon || null) : undefined,
+    };
+
+    if (kd_desa) {
+      updateData.desa = { connect: { kd_desa } };
+    }
+    if (kd_kecamatan) {
+      updateData.kecamatan = { connect: { kd_kecamatan } };
+    }
+    if (kd_komoditas) {
+      updateData.komoditas = { connect: { kd_komoditas } };
+    }
+    if (kd_kelompok) {
+      updateData.kelompokTani = { connect: { kd_kelompok } };
+    } else if (existing.kd_kelompok) {
+      updateData.kelompokTani = { disconnect: true };
+    }
+
     const updated = await prisma.kebun.update({
       where: { id },
-      data: {
-        kd_kebun,
-        nama,
-        kd_desa,
-        kd_kecamatan,
-        kd_kelompok: kd_kelompok || null,
-        kd_komoditas,
-        namaPemilik,
-        alamatLokasi,
-        latitude: latitude !== undefined ? (latitude ? parseFloat(latitude) : null) : undefined,
-        longitude: longitude !== undefined ? (longitude ? parseFloat(longitude) : null) : undefined,
-        luasLahanHa: luasLahanHa !== undefined ? (luasLahanHa ? parseFloat(luasLahanHa) : null) : undefined,
-        tahunTanam: tahunTanam ? parseInt(tahunTanam) : null,
-        sistemTanam,
-        kondisiTanaman: dbKondisiTanaman !== undefined ? dbKondisiTanaman : undefined,
-        statusLahan,
-        deskripsi,
-        status: dbStatus,
-      },
+      data: updateData,
     });
 
     if (fotoUrl) {

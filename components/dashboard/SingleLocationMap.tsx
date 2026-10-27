@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { MapPin, Navigation, ExternalLink, RefreshCw } from "lucide-react";
+import { MapPin, Navigation, ExternalLink, RefreshCw, Layers } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
 interface SingleLocationMapProps {
@@ -13,6 +13,8 @@ interface SingleLocationMapProps {
   address?: string;
   color?: string;
   category?: "KOLAM" | "PETERNAKAN" | "KEBUN" | string;
+  batasLahan?: any;
+  warnaPolygon?: string | null;
 }
 
 const LeafletSingleMapInner = ({
@@ -23,21 +25,59 @@ const LeafletSingleMapInner = ({
   address,
   color = "#0284c7",
   category = "KOLAM",
+  batasLahan,
+  warnaPolygon,
 }: SingleLocationMapProps & { lat: number; lng: number }) => {
-  const { MapContainer, TileLayer, Marker, Popup, useMap } = require("react-leaflet");
+  const { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap } = require("react-leaflet");
   const L = require("leaflet");
 
-  function ChangeView({ center }: { center: [number, number] }) {
+  let parsedGeoJson: any = null;
+  if (batasLahan) {
+    try {
+      parsedGeoJson = typeof batasLahan === "string" ? JSON.parse(batasLahan) : batasLahan;
+      if (Array.isArray(parsedGeoJson)) {
+        parsedGeoJson = {
+          type: "Polygon",
+          coordinates: [
+            parsedGeoJson.map((pt: any) => [
+              Number(pt[1] !== undefined ? pt[1] : pt.lng),
+              Number(pt[0] !== undefined ? pt[0] : pt.lat),
+            ]),
+          ],
+        };
+      }
+    } catch (e) {
+      console.warn("Gagal parse batasLahan GeoJSON:", e);
+    }
+  }
+
+  function ChangeView({ center, geojson }: { center: [number, number]; geojson: any }) {
     const map = useMap();
     useEffect(() => {
-      map.setView(center, 14);
-    }, [center, map]);
+      const timer = setTimeout(() => {
+        try {
+          map.invalidateSize();
+          if (geojson) {
+            const geoLayer = L.geoJSON(geojson);
+            const bounds = geoLayer.getBounds();
+            if (bounds.isValid()) {
+              map.fitBounds(bounds, { padding: [35, 35], maxZoom: 16 });
+              return;
+            }
+          }
+          map.setView(center, 14);
+        } catch (e) {}
+      }, 150);
+      return () => clearTimeout(timer);
+    }, [center, geojson, map]);
     return null;
   }
 
   let symbol = "🐟";
   if (category === "PETERNAKAN") symbol = "🐄";
   if (category === "KEBUN") symbol = "🌱";
+
+  const polygonStrokeColor = warnaPolygon || color || "#16a34a";
 
   const customIcon = L.divIcon({
     className: "custom-single-marker",
@@ -69,17 +109,40 @@ const LeafletSingleMapInner = ({
       scrollWheelZoom={false}
       style={{ height: "100%", width: "100%", zIndex: 10 }}
     >
-      <ChangeView center={[lat, lng]} />
+      <ChangeView center={[lat, lng]} geojson={parsedGeoJson} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+
+      {/* Render Batas Poligon GIS jika tersedia */}
+      {parsedGeoJson && (
+        <GeoJSON
+          key={JSON.stringify(parsedGeoJson)}
+          data={parsedGeoJson}
+          style={{
+            color: polygonStrokeColor,
+            weight: 2.5,
+            fillColor: polygonStrokeColor,
+            fillOpacity: 0.28,
+            dashArray: "4, 4",
+          }}
+        />
+      )}
+
+      {/* Titik Lokasi Marker */}
       <Marker position={[lat, lng]} icon={customIcon}>
         <Popup>
           <div className="p-1 min-w-[180px]">
             <h4 className="font-bold text-sm text-slate-900">{title}</h4>
             {subtitle && <p className="text-xs text-slate-600 mt-0.5">{subtitle}</p>}
             {address && <p className="text-[11px] text-slate-500 mt-1">{address}</p>}
+            {parsedGeoJson && (
+              <div className="mt-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                <span>Batas Lahan Terpetakan</span>
+              </div>
+            )}
             <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
               <span>{lat.toFixed(5)}, {lng.toFixed(5)}</span>
             </div>
@@ -97,7 +160,7 @@ const DynamicLeafletSingleMap = dynamic(
     loading: () => (
       <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-400 gap-2">
         <RefreshCw className="animate-spin text-emerald-600" size={24} />
-        <span className="text-xs font-medium">Memuat Peta Lokasi...</span>
+        <span className="text-xs font-semibold">Memuat Peta Lokasi...</span>
       </div>
     ),
   }
@@ -138,6 +201,14 @@ export default function SingleLocationMap(props: SingleLocationMapProps) {
 
   return (
     <div className="relative rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs h-72 w-full bg-slate-100">
+      {/* Badge jika memiliki batas polygon */}
+      {props.batasLahan && (
+        <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/80 backdrop-blur-md text-emerald-200 border border-emerald-500/30 text-[11px] font-semibold shadow-xs">
+          <Layers size={13} className="text-emerald-400" />
+          <span>Batas Lahan Aktif</span>
+        </div>
+      )}
+
       {mounted && (
         <DynamicLeafletSingleMap
           {...props}

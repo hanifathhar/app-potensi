@@ -41,6 +41,8 @@ interface MapPinItem {
   color: string;
   foto?: any[];
   fotoUrl?: string | null;
+  batasLahan?: any;
+  warnaPolygon?: string;
   detail?: {
     kode: string;
     nama: string;
@@ -219,7 +221,7 @@ const LeafletMapInner = ({
   onSelectPhoto?: (item: { url: string; title: string; subtitle: string }) => void;
   onSelectDetail?: (item: MapPinItem) => void;
 }) => {
-  const { MapContainer, TileLayer, Marker, Popup, useMap } = require("react-leaflet");
+  const { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap } = require("react-leaflet");
   const L = require("leaflet");
 
   // Center update controller with smooth flyTo animation & invalidateSize for modal
@@ -280,6 +282,45 @@ const LeafletMapInner = ({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+
+      {/* Render Batas Lahan Poligon GIS */}
+      {pins
+        .filter((pin) => Boolean(pin.batasLahan))
+        .map((pin) => {
+          let parsed: any = null;
+          try {
+            parsed = typeof pin.batasLahan === "string" ? JSON.parse(pin.batasLahan) : pin.batasLahan;
+            if (Array.isArray(parsed)) {
+              parsed = {
+                type: "Polygon",
+                coordinates: [
+                  parsed.map((pt: any) => [
+                    Number(pt[1] !== undefined ? pt[1] : pt.lng),
+                    Number(pt[0] !== undefined ? pt[0] : pt.lat),
+                  ]),
+                ],
+              };
+            }
+          } catch (e) {
+            return null;
+          }
+          if (!parsed) return null;
+
+          const polyColor = pin.warnaPolygon || pin.color || "#16a34a";
+          return (
+            <GeoJSON
+              key={`poly-${pin.id}`}
+              data={parsed}
+              style={{
+                color: polyColor,
+                weight: 2,
+                fillColor: polyColor,
+                fillOpacity: 0.22,
+                dashArray: "3, 3",
+              }}
+            />
+          );
+        })}
 
       {pins.map((pin) => {
         const hasRealPhoto = Boolean(pin.fotoUrl || (pin.foto && pin.foto.length > 0 && pin.foto[0].url));
@@ -371,6 +412,12 @@ const LeafletMapInner = ({
                   <p className="text-xs text-slate-600 mb-0.5">
                     <strong>Pengelola:</strong> {pin.pemilik}
                   </p>
+                )}
+                {pin.batasLahan && (
+                  <div className="my-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                    <span>Batas Lahan Terpetakan</span>
+                  </div>
                 )}
                 <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 mb-2">
                   <span className="flex items-center gap-1 truncate">

@@ -528,6 +528,8 @@ export async function GET(request: Request) {
         color: "#16a34a",
         foto: k.foto || [],
         fotoUrl: k.foto?.[0]?.url || null,
+        batasLahan: (k as any).batasLahan || null,
+        warnaPolygon: (k as any).warnaPolygon || null,
         detail: {
           kode: k.kd_kebun,
           nama: k.nama,

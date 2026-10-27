@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useAuthority } from "@/hooks/useAuthority";
 import LocationPicker from "@/components/potensi/LocationPicker";
+import SpatialBoundaryPicker from "@/components/potensi/SpatialBoundaryPicker";
 
 interface KebunItem {
   id: string;
@@ -43,6 +44,8 @@ interface KebunItem {
   alamatLokasi?: string;
   latitude?: number;
   longitude?: number;
+  batasLahan?: any;
+  warnaPolygon?: string;
   luasLahanHa?: number;
   tahunTanam?: number;
   sistemTanam?: string;
@@ -157,6 +160,8 @@ export default function PertanianClientView() {
   const [formSistemTanam, setFormSistemTanam] = useState("Monokultur");
   const [formLat, setFormLat] = useState("");
   const [formLng, setFormLng] = useState("");
+  const [formBatasLahan, setFormBatasLahan] = useState<any>(null);
+  const [formWarnaPolygon, setFormWarnaPolygon] = useState<string>("#16a34a");
   const [formStatus, setFormStatus] = useState("AKTIF");
   const [formDeskripsi, setFormDeskripsi] = useState("");
   const [formFotoUrl, setFormFotoUrl] = useState("");
@@ -324,6 +329,8 @@ export default function PertanianClientView() {
     setFormSistemTanam("Monokultur");
     setFormLat("1.4500");
     setFormLng("99.2500");
+    setFormBatasLahan(null);
+    setFormWarnaPolygon("#16a34a");
     setFormStatus("AKTIF");
     setFormDeskripsi("");
     setFormFotoUrl("");
@@ -345,6 +352,8 @@ export default function PertanianClientView() {
     setFormSistemTanam(item.sistemTanam || "Monokultur");
     setFormLat(item.latitude ? String(item.latitude) : "");
     setFormLng(item.longitude ? String(item.longitude) : "");
+    setFormBatasLahan((item as any).batasLahan || null);
+    setFormWarnaPolygon((item as any).warnaPolygon || "#16a34a");
     setFormStatus((item as any).statusUsaha || item.status);
     setFormDeskripsi(item.deskripsi || "");
     setFormFotoUrl(item.foto?.[0]?.url || "");
@@ -373,6 +382,8 @@ export default function PertanianClientView() {
         sistemTanam: formSistemTanam,
         latitude: formLat,
         longitude: formLng,
+        batasLahan: formBatasLahan || null,
+        warnaPolygon: formWarnaPolygon || "#16a34a",
         status: formStatus,
         deskripsi: formDeskripsi,
         fotoUrl: formFotoUrl || null,
@@ -810,9 +821,20 @@ export default function PertanianClientView() {
                         )}
                         <div>
                           <p className="font-bold text-slate-900">{k.nama}</p>
-                          <span className="font-mono text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                            {k.kd_kebun}
-                          </span>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="font-mono text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                              {k.kd_kebun}
+                            </span>
+                            {k.batasLahan && (
+                              <span
+                                className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-800 bg-emerald-100/80 px-1.5 py-0.5 rounded"
+                                title="Batas poligon lahan terpetakan pada GIS"
+                              >
+                                <Layers size={10} />
+                                <span>Batas GIS</span>
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -1189,6 +1211,20 @@ export default function PertanianClientView() {
                     }}
                     accentColor="emerald"
                     unitName={formNama || "Usaha Pertanian"}
+                  />
+
+                  {/* Editor Spasial Batas Lahan GIS (Polygon) */}
+                  <SpatialBoundaryPicker
+                    value={formBatasLahan}
+                    onChange={(geo) => {
+                      setFormBatasLahan(geo);
+                    }}
+                    centerLat={Number(formLat) && !isNaN(Number(formLat)) ? Number(formLat) : 1.5917}
+                    centerLng={Number(formLng) && !isNaN(Number(formLng)) ? Number(formLng) : 99.2789}
+                    warnaPolygon={formWarnaPolygon}
+                    onChangeWarna={(color) => setFormWarnaPolygon(color)}
+                    unitName={formNama || "Unit Kebun"}
+                    onApplyAreaHa={(ha) => setFormLuasHa(ha)}
                   />
                 </div>
               </div>

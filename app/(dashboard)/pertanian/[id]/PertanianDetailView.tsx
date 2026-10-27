@@ -36,6 +36,8 @@ interface PertanianDetailViewProps {
     alamatLokasi?: string | null;
     latitude?: number | string | null;
     longitude?: number | string | null;
+    batasLahan?: any;
+    warnaPolygon?: string | null;
     jenisTanaman?: string | null;
     luasLahanHa?: number | string | null;
     jumlahPohon?: number | null;
@@ -575,6 +577,8 @@ export default function PertanianDetailView({ kebun }: PertanianDetailViewProps)
                   address={kebun.alamatLokasi || undefined}
                   color="#16a34a"
                   category="KEBUN"
+                  batasLahan={kebun.batasLahan}
+                  warnaPolygon={kebun.warnaPolygon}
                 />
 
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 text-xs space-y-2">
