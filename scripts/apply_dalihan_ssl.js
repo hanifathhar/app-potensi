@@ -1,9 +1,9 @@
 const { connectBastion, runCmd } = require('./remote_exec');
 
-const nginxConfig = `# 1. Standard HTTPS Port 443
+const nginxConfig = `# 1. Standard HTTPS Port 443 (via SNI stream on 127.0.0.1:8443)
 server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
+    listen 127.0.0.1:8443 ssl;
+    listen [::1]:8443 ssl;
     server_name dalihan.tapselkab.go.id;
 
     ssl_certificate /etc/letsencrypt/live/dalihan.tapselkab.go.id/fullchain.pem;
