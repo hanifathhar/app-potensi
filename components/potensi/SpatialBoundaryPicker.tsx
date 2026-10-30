@@ -1293,23 +1293,6 @@ export default function SpatialBoundaryPicker({
 
         {/* Status Badge & Action Buttons (Upload KML & Gambar Batas Lahan) */}
         <div className="flex flex-wrap items-center gap-2">
-          {hasBoundary && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
-              <CheckCircle2 size={12} className="text-emerald-600" />
-              <span>{points.length} Titik Sudut</span>
-            </span>
-          )}
-
-          <button
-            type="button"
-            onClick={() => cardFileInputRef.current?.click()}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-bold transition shadow-2xs cursor-pointer"
-            title="Upload file poligon batas lahan berformat .KML, .KMZ, atau .GeoJSON"
-          >
-            <Upload size={13} className="text-emerald-700" />
-            <span>Upload KML</span>
-          </button>
-
           <button
             type="button"
             onClick={handleOpenModal}
