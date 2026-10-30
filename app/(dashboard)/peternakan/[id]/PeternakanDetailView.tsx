@@ -40,6 +40,9 @@ interface PeternakanDetailViewProps {
     alamatLokasi?: string | null;
     latitude?: number | string | null;
     longitude?: number | string | null;
+    batasLahan?: any;
+    warnaPolygon?: string | null;
+    luasLahanM2?: number | string | null;
     jenisTernak?: string | null;
     jenisKandang?: string | null;
     jumlahKandang?: number | null;
@@ -404,7 +407,10 @@ export default function PeternakanDetailView({ ternak }: PeternakanDetailViewPro
                     <p className="font-extrabold text-slate-900 text-sm mt-0.5">
                       {ternak.jenisKandang || "Kandang Baterai / Panggung"}
                     </p>
-                    <span className="text-[10px] text-slate-400">Jumlah Unit: {ternak.jumlahKandang || 1} Kandang</span>
+                    <span className="text-[10px] text-slate-400">
+                      Jumlah Unit: {ternak.jumlahKandang || 1} Kandang
+                      {ternak.luasLahanM2 ? ` • Luas Area: ${Number(ternak.luasLahanM2).toLocaleString("id-ID")} m²` : ""}
+                    </span>
                   </div>
 
                   <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60">
@@ -677,6 +683,8 @@ export default function PeternakanDetailView({ ternak }: PeternakanDetailViewPro
                   address={ternak.alamatLokasi || undefined}
                   color="#ea580c"
                   category="PETERNAKAN"
+                  batasLahan={ternak.batasLahan}
+                  warnaPolygon={ternak.warnaPolygon || "#ea580c"}
                 />
 
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 text-xs space-y-2">

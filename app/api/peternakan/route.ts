@@ -170,6 +170,7 @@ export async function POST(request: Request) {
       longitude,
       jenisTernak,
       jenisKandang,
+      luasLahanM2,
       jumlahKandang,
       jumlahTernak,
       satuanTernak,
@@ -179,6 +180,8 @@ export async function POST(request: Request) {
       kondisiKandang,
       status,
       fotoUrl,
+      batasLahan,
+      warnaPolygon,
     } = body;
 
     if (!kd_peternakan || !nm_peternakan || !kd_desa || !kd_kecamatan || !kd_komoditas) {
@@ -238,6 +241,7 @@ export async function POST(request: Request) {
         longitude: longitude ? parseFloat(longitude) : null,
         jenisTernak,
         jenisKandang,
+        luasLahanM2: luasLahanM2 ? parseFloat(luasLahanM2) : null,
         jumlahKandang: jumlahKandang ? parseInt(jumlahKandang) : 1,
         jumlahTernak: jumlahTernak ? parseInt(jumlahTernak) : 0,
         satuanTernak: satuanTernak || "Ekor",
@@ -246,6 +250,8 @@ export async function POST(request: Request) {
         deskripsi,
         kondisiKandang: dbKondisiKandang,
         status: dbStatus,
+        batasLahan: batasLahan ? (typeof batasLahan === "string" ? JSON.parse(batasLahan) : batasLahan) : null,
+        warnaPolygon: warnaPolygon || null,
         foto: fotoUrl
           ? {
               create: {
@@ -256,7 +262,7 @@ export async function POST(request: Request) {
               },
             }
           : undefined,
-      },
+      } as any,
     });
 
     return NextResponse.json({ success: true, data: created });
@@ -289,6 +295,7 @@ export async function PUT(request: Request) {
       longitude,
       jenisTernak,
       jenisKandang,
+      luasLahanM2,
       jumlahKandang,
       jumlahTernak,
       satuanTernak,
@@ -298,6 +305,8 @@ export async function PUT(request: Request) {
       kondisiKandang,
       status,
       fotoUrl,
+      batasLahan,
+      warnaPolygon,
     } = body;
 
     if (!id) {
@@ -354,6 +363,7 @@ export async function PUT(request: Request) {
         longitude: longitude !== undefined ? (longitude ? parseFloat(longitude) : null) : undefined,
         jenisTernak,
         jenisKandang,
+        luasLahanM2: luasLahanM2 !== undefined ? (luasLahanM2 ? parseFloat(luasLahanM2) : null) : undefined,
         jumlahKandang: jumlahKandang ? parseInt(jumlahKandang) : 1,
         jumlahTernak: jumlahTernak !== undefined ? parseInt(jumlahTernak) : 0,
         satuanTernak: satuanTernak || "Ekor",
@@ -362,7 +372,14 @@ export async function PUT(request: Request) {
         deskripsi,
         kondisiKandang: dbKondisiKandang !== undefined ? dbKondisiKandang : undefined,
         status: dbStatus !== undefined ? dbStatus : undefined,
-      },
+        batasLahan:
+          batasLahan !== undefined
+            ? batasLahan && typeof batasLahan === "string"
+              ? JSON.parse(batasLahan)
+              : batasLahan
+            : undefined,
+        warnaPolygon: warnaPolygon !== undefined ? warnaPolygon || null : undefined,
+      } as any,
     });
 
     if (fotoUrl) {

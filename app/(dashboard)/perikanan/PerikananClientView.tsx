@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useAuthority } from "@/hooks/useAuthority";
 import LocationPicker from "@/components/potensi/LocationPicker";
+import SpatialBoundaryPicker from "@/components/potensi/SpatialBoundaryPicker";
 
 interface KolamItem {
   id: string;
@@ -42,6 +43,8 @@ interface KolamItem {
   alamatLokasi?: string;
   latitude?: number;
   longitude?: number;
+  batasLahan?: any;
+  warnaPolygon?: string;
   jenisKolam?: string;
   luasKolamM2?: number;
   jumlahKolam?: number;
@@ -160,6 +163,8 @@ export default function PerikananClientView() {
   const [formKapasitas, setFormKapasitas] = useState("5000");
   const [formLat, setFormLat] = useState("");
   const [formLng, setFormLng] = useState("");
+  const [formBatasLahan, setFormBatasLahan] = useState<any>(null);
+  const [formWarnaPolygon, setFormWarnaPolygon] = useState("#0284c7");
   const [formStatus, setFormStatus] = useState("AKTIF");
   const [formDeskripsi, setFormDeskripsi] = useState("");
   const [formFotoUrl, setFormFotoUrl] = useState("");
@@ -328,6 +333,8 @@ export default function PerikananClientView() {
     setFormKapasitas("8000");
     setFormLat("1.4500");
     setFormLng("99.2500");
+    setFormBatasLahan(null);
+    setFormWarnaPolygon("#0284c7");
     setFormStatus("AKTIF");
     setFormDeskripsi("");
     setFormFotoUrl("");
@@ -351,6 +358,8 @@ export default function PerikananClientView() {
     setFormKapasitas(item.kapasitasBenih ? String(item.kapasitasBenih) : "5000");
     setFormLat(item.latitude ? String(item.latitude) : "");
     setFormLng(item.longitude ? String(item.longitude) : "");
+    setFormBatasLahan(item.batasLahan || null);
+    setFormWarnaPolygon(item.warnaPolygon || "#0284c7");
     setFormStatus((item as any).statusUsaha || item.status);
     setFormDeskripsi(item.deskripsi || "");
     setFormFotoUrl(item.foto?.[0]?.url || "");
@@ -417,6 +426,8 @@ export default function PerikananClientView() {
         kapasitasBenih: formKapasitas,
         latitude: formLat,
         longitude: formLng,
+        batasLahan: formBatasLahan,
+        warnaPolygon: formWarnaPolygon,
         status: formStatus,
         deskripsi: formDeskripsi,
         fotoUrl: formFotoUrl || null,
@@ -785,9 +796,20 @@ export default function PerikananClientView() {
                         )}
                         <div>
                           <p className="font-bold text-slate-900">{k.nm_kolam}</p>
-                          <span className="font-mono text-[10px] text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded">
-                            {k.kd_kolam}
-                          </span>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="font-mono text-[10px] text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded">
+                              {k.kd_kolam}
+                            </span>
+                            {k.batasLahan && (
+                              <span
+                                className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-sky-100/80 text-sky-800 border border-sky-200"
+                                title="Memiliki data poligon batas lahan GIS"
+                              >
+                                <Layers size={10} />
+                                <span>Batas GIS</span>
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -1150,6 +1172,24 @@ export default function PerikananClientView() {
                     }}
                     accentColor="sky"
                     unitName={formNmKolam || "Usaha Perikanan"}
+                  />
+
+                  <SpatialBoundaryPicker
+                    value={formBatasLahan}
+                    onChange={(geojson, _estimatedHa, centroid) => {
+                      setFormBatasLahan(geojson);
+                      if (centroid) {
+                        setFormLat(String(centroid.lat));
+                        setFormLng(String(centroid.lng));
+                      }
+                    }}
+                    centerLat={formLat ? parseFloat(formLat) : 1.45}
+                    centerLng={formLng ? parseFloat(formLng) : 99.25}
+                    warnaPolygon={formWarnaPolygon}
+                    onChangeWarna={(c) => setFormWarnaPolygon(c)}
+                    unitName={formNmKolam || "Usaha Perikanan"}
+                    sectorType="KOLAM"
+                    onApplyAreaM2={(m2) => setFormLuasM2(m2)}
                   />
                 </div>
               </div>

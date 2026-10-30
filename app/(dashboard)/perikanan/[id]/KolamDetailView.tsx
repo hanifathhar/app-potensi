@@ -40,6 +40,8 @@ interface KolamDetailViewProps {
     alamatLokasi?: string | null;
     latitude?: number | string | null;
     longitude?: number | string | null;
+    batasLahan?: any;
+    warnaPolygon?: string | null;
     jenisKolam?: string | null;
     luasKolamM2?: number | string | null;
     jumlahKolam?: number | null;
@@ -674,6 +676,8 @@ export default function KolamDetailView({ kolam }: KolamDetailViewProps) {
                   address={kolam.alamatLokasi || undefined}
                   color="#0284c7"
                   category="KOLAM"
+                  batasLahan={kolam.batasLahan}
+                  warnaPolygon={kolam.warnaPolygon || "#0284c7"}
                 />
 
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 text-xs space-y-2">

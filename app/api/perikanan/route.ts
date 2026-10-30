@@ -179,6 +179,8 @@ export async function POST(request: Request) {
       kondisiKolam,
       status,
       fotoUrl,
+      batasLahan,
+      warnaPolygon,
     } = body;
 
     if (!kd_kolam || !nm_kolam || !kd_desa || !kd_kecamatan || !kd_komoditas) {
@@ -245,6 +247,8 @@ export async function POST(request: Request) {
         deskripsi,
         kondisiKolam: dbKondisiKolam,
         status: dbStatus,
+        batasLahan: batasLahan ? (typeof batasLahan === "string" ? JSON.parse(batasLahan) : batasLahan) : null,
+        warnaPolygon: warnaPolygon || null,
         foto: fotoUrl
           ? {
               create: {
@@ -255,7 +259,7 @@ export async function POST(request: Request) {
               },
             }
           : undefined,
-      },
+      } as any,
     });
 
     return NextResponse.json({ success: true, data: created });
@@ -296,6 +300,8 @@ export async function PUT(request: Request) {
       kondisiKolam,
       status,
       fotoUrl,
+      batasLahan,
+      warnaPolygon,
     } = body;
 
     if (!id) {
@@ -359,7 +365,14 @@ export async function PUT(request: Request) {
         deskripsi,
         kondisiKolam: dbKondisiKolam !== undefined ? dbKondisiKolam : undefined,
         status: dbStatus !== undefined ? dbStatus : undefined,
-      },
+        batasLahan:
+          batasLahan !== undefined
+            ? batasLahan && typeof batasLahan === "string"
+              ? JSON.parse(batasLahan)
+              : batasLahan
+            : undefined,
+        warnaPolygon: warnaPolygon !== undefined ? warnaPolygon || null : undefined,
+      } as any,
     });
 
     if (fotoUrl) {

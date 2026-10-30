@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useAuthority } from "@/hooks/useAuthority";
 import LocationPicker from "@/components/potensi/LocationPicker";
+import SpatialBoundaryPicker from "@/components/potensi/SpatialBoundaryPicker";
 
 interface PeternakanItem {
   id: string;
@@ -42,6 +43,9 @@ interface PeternakanItem {
   alamatLokasi?: string;
   latitude?: number;
   longitude?: number;
+  batasLahan?: any;
+  warnaPolygon?: string;
+  luasLahanM2?: number;
   jenisTernak?: string;
   jenisKandang?: string;
   jumlahKandang?: number;
@@ -158,9 +162,12 @@ export default function PeternakanClientView() {
   const [formSatuanTernak, setFormSatuanTernak] = useState("Ekor");
   const [formJenisTernak, setFormJenisTernak] = useState("Sapi Potong Simental");
   const [formJenisKandang, setFormJenisKandang] = useState("Kandang Koloni Terbuka");
+  const [formLuasM2, setFormLuasM2] = useState("");
   const [formSumberPakan, setFormSumberPakan] = useState("Rumput Gajah & Konsentrat");
   const [formLat, setFormLat] = useState("");
   const [formLng, setFormLng] = useState("");
+  const [formBatasLahan, setFormBatasLahan] = useState<any>(null);
+  const [formWarnaPolygon, setFormWarnaPolygon] = useState("#ea580c");
   const [formStatus, setFormStatus] = useState("AKTIF");
   const [formDeskripsi, setFormDeskripsi] = useState("");
   const [formFotoUrl, setFormFotoUrl] = useState("");
@@ -326,9 +333,12 @@ export default function PeternakanClientView() {
     setFormSatuanTernak("Ekor");
     setFormJenisTernak("Sapi Limosin / Simental");
     setFormJenisKandang("Kandang Koloni");
+    setFormLuasM2("400");
     setFormSumberPakan("Rumput Gajah & Silase");
     setFormLat("1.2850");
     setFormLng("99.4210");
+    setFormBatasLahan(null);
+    setFormWarnaPolygon("#ea580c");
     setFormStatus("AKTIF");
     setFormDeskripsi("");
     setFormFotoUrl("");
@@ -349,9 +359,12 @@ export default function PeternakanClientView() {
     setFormSatuanTernak(item.satuanTernak || "Ekor");
     setFormJenisTernak(item.jenisTernak || "");
     setFormJenisKandang(item.jenisKandang || "");
+    setFormLuasM2(item.luasLahanM2 ? String(item.luasLahanM2) : "");
     setFormSumberPakan(item.sumberPakan || "");
     setFormLat(item.latitude ? String(item.latitude) : "");
     setFormLng(item.longitude ? String(item.longitude) : "");
+    setFormBatasLahan(item.batasLahan || null);
+    setFormWarnaPolygon(item.warnaPolygon || "#ea580c");
     setFormStatus((item as any).statusUsaha || item.status);
     setFormDeskripsi(item.deskripsi || "");
     setFormFotoUrl(item.foto?.[0]?.url || "");
@@ -415,9 +428,12 @@ export default function PeternakanClientView() {
         satuanTernak: formSatuanTernak,
         jenisTernak: formJenisTernak,
         jenisKandang: formJenisKandang,
+        luasLahanM2: formLuasM2 || null,
         sumberPakan: formSumberPakan,
         latitude: formLat,
         longitude: formLng,
+        batasLahan: formBatasLahan,
+        warnaPolygon: formWarnaPolygon,
         status: formStatus,
         deskripsi: formDeskripsi,
         fotoUrl: formFotoUrl || null,
@@ -748,6 +764,7 @@ export default function PeternakanClientView() {
                 <th className="p-3.5">Komoditas Ternak</th>
                 <th className="p-3.5">Lokasi Wilayah</th>
                 <th className="p-3.5">Pemilik / Pengelola</th>
+                <th className="p-3.5 text-center">Luas Area (m²)</th>
                 <th className="p-3.5 text-center">Populasi</th>
                 <th className="p-3.5 text-center">Status</th>
                 <th className="p-3.5 text-right">Aksi</th>
@@ -756,14 +773,14 @@ export default function PeternakanClientView() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-slate-400">
+                  <td colSpan={8} className="text-center py-8 text-slate-400">
                     <RefreshCw size={20} className="animate-spin inline-block mr-2" />
                     Memuat data peternakan...
                   </td>
                 </tr>
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-slate-400">
+                  <td colSpan={8} className="text-center py-8 text-slate-400">
                     Tidak ada data usaha peternakan ditemukan.
                   </td>
                 </tr>
@@ -785,9 +802,20 @@ export default function PeternakanClientView() {
                         )}
                         <div>
                           <p className="font-bold text-slate-900">{t.nm_peternakan}</p>
-                          <span className="font-mono text-[10px] text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded">
-                            {t.kd_peternakan}
-                          </span>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="font-mono text-[10px] text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded">
+                              {t.kd_peternakan}
+                            </span>
+                            {t.batasLahan && (
+                              <span
+                                className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-100/80 text-orange-800 border border-orange-200"
+                                title="Memiliki data poligon batas lahan GIS"
+                              >
+                                <Layers size={10} />
+                                <span>Batas GIS</span>
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -801,6 +829,9 @@ export default function PeternakanClientView() {
                     <td className="p-3.5">
                       <p className="font-semibold text-slate-800">{t.namaPemilik || "-"}</p>
                       <p className="text-[10px] text-slate-500">{t.kelompokTani?.nm_kelompok || "Mandiri"}</p>
+                    </td>
+                    <td className="p-3.5 text-center font-bold text-slate-800">
+                      {t.luasLahanM2 ? `${Number(t.luasLahanM2).toLocaleString("id-ID")} m²` : "-"}
                     </td>
                     <td className="p-3.5 text-center font-bold text-slate-800">
                       {t.jumlahTernak || 0} {t.satuanTernak || "Ekor"}
@@ -1146,6 +1177,24 @@ export default function PeternakanClientView() {
                     accentColor="orange"
                     unitName={formNmPeternakan || "Usaha Peternakan"}
                   />
+
+                  <SpatialBoundaryPicker
+                    value={formBatasLahan}
+                    onChange={(geojson, _estimatedHa, centroid) => {
+                      setFormBatasLahan(geojson);
+                      if (centroid) {
+                        setFormLat(String(centroid.lat));
+                        setFormLng(String(centroid.lng));
+                      }
+                    }}
+                    centerLat={formLat ? parseFloat(formLat) : 1.285}
+                    centerLng={formLng ? parseFloat(formLng) : 99.421}
+                    warnaPolygon={formWarnaPolygon}
+                    onChangeWarna={(c) => setFormWarnaPolygon(c)}
+                    unitName={formNmPeternakan || "Usaha Peternakan"}
+                    sectorType="PETERNAKAN"
+                    onApplyAreaM2={(m2) => setFormLuasM2(m2)}
+                  />
                 </div>
               </div>
 
@@ -1154,7 +1203,17 @@ export default function PeternakanClientView() {
                 <h4 className="text-[11px] font-bold uppercase tracking-wider text-orange-800 mb-2.5 pb-1 border-b border-slate-100">
                   3. Spesifikasi Teknis Peternakan
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3.5">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3.5">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Luas Area / Kandang (m²)</label>
+                    <input
+                      type="number"
+                      value={formLuasM2}
+                      onChange={(e) => setFormLuasM2(e.target.value)}
+                      placeholder="Contoh: 400"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-600"
+                    />
+                  </div>
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">Populasi Ternak</label>
                     <input

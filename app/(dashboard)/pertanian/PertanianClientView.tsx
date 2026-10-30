@@ -1216,8 +1216,15 @@ export default function PertanianClientView() {
                   {/* Editor Spasial Batas Lahan GIS (Polygon) */}
                   <SpatialBoundaryPicker
                     value={formBatasLahan}
-                    onChange={(geo) => {
+                    onChange={(geo, estimatedAreaHa, centroid) => {
                       setFormBatasLahan(geo);
+                      if (centroid && centroid.lat && centroid.lng) {
+                        setFormLat(String(centroid.lat));
+                        setFormLng(String(centroid.lng));
+                      }
+                      if (estimatedAreaHa && estimatedAreaHa > 0) {
+                        setFormLuasHa(String(estimatedAreaHa));
+                      }
                     }}
                     centerLat={Number(formLat) && !isNaN(Number(formLat)) ? Number(formLat) : 1.5917}
                     centerLng={Number(formLng) && !isNaN(Number(formLng)) ? Number(formLng) : 99.2789}

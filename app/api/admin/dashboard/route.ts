@@ -584,6 +584,8 @@ export async function GET(request: Request) {
         color: "#0284c7",
         foto: k.foto || [],
         fotoUrl: k.foto?.[0]?.url || null,
+        batasLahan: (k as any).batasLahan || null,
+        warnaPolygon: (k as any).warnaPolygon || null,
         detail: {
           kode: k.kd_kolam,
           nama: k.nm_kolam,
@@ -640,6 +642,8 @@ export async function GET(request: Request) {
         color: "#ea580c",
         foto: t.foto || [],
         fotoUrl: t.foto?.[0]?.url || null,
+        batasLahan: (t as any).batasLahan || null,
+        warnaPolygon: (t as any).warnaPolygon || null,
         detail: {
           kode: t.kd_peternakan,
           nama: t.nm_peternakan,
@@ -658,6 +662,7 @@ export async function GET(request: Request) {
           spesifikasi: [
             { label: "Populasi Ternak", value: `${(Number(t.jumlahTernak || 0)).toLocaleString("id-ID")} Ekor` },
             { label: "Jumlah Kandang", value: `${t.jumlahKandang || 0} Unit Kandang` },
+            { label: "Luas Area / Kandang", value: (t as any).luasLahanM2 ? `${Number((t as any).luasLahanM2).toLocaleString("id-ID")} m²` : "-" },
             { label: "Jenis Ternak", value: t.jenisTernak || t.komoditas?.nm_komoditas || "Ternak" },
             { label: "Sistem Pemeliharaan", value: t.sistemPemeliharaan || "Intensif" },
             { label: "Sumber Pakan", value: t.sumberPakan || "Pakan Mandiri & Konsentrat" },

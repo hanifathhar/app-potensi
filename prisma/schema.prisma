@@ -334,6 +334,10 @@ model Kolam {
   latitude            Decimal?   @db.Decimal(10, 7)
   longitude           Decimal?   @db.Decimal(10, 7)
 
+  // Data spasial GIS (Batas Lahan Polygon & Styling)
+  batasLahan          Json?      // Format GeoJSON Polygon/MultiPolygon batas lahan kolam
+  warnaPolygon        String?    // Hex kode warna poligon di peta GIS (opsional)
+
   // Data kolam
   jenisKolam          String?
   luasKolamM2         Decimal?   @db.Decimal(14, 2)
@@ -396,9 +400,14 @@ model Peternakan {
   latitude            Decimal?   @db.Decimal(10, 7)
   longitude           Decimal?   @db.Decimal(10, 7)
 
+  // Data spasial GIS (Batas Lahan Polygon & Styling)
+  batasLahan          Json?      // Format GeoJSON Polygon/MultiPolygon batas lahan peternakan
+  warnaPolygon        String?    // Hex kode warna poligon di peta GIS (opsional)
+
   // Data ternak dan kandang
   jenisTernak         String?
   jenisKandang        String?
+  luasLahanM2         Decimal?   @db.Decimal(14, 2)
   jumlahKandang       Int?
   jumlahTernak        Int?
   satuanTernak        String?
